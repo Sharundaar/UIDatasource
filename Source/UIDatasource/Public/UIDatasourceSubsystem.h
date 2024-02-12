@@ -1,6 +1,7 @@
-﻿#pragma once
+﻿// Copyright Sharundaar. All Rights Reserved.
 
-#include "TickableEditorObject.h"
+#pragma once
+
 #include "UIDatasource.h"
 
 #include "UIDatasourceSubsystem.generated.h"

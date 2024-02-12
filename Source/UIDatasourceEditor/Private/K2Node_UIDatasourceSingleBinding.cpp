@@ -1,5 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿// Copyright Sharundaar. All Rights Reserved.
 
 #include "K2Node_UIDatasourceSingleBinding.h"
 

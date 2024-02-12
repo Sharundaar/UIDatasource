@@ -1,4 +1,6 @@
-﻿#include "UIDatasourceArchetype.h"
+﻿// Copyright Sharundaar. All Rights Reserved.
+
+#include "UIDatasourceArchetype.h"
 
 #include "UIDatasourceSubsystem.h"
 

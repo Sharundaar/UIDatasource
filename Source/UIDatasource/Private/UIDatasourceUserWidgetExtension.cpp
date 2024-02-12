@@ -1,4 +1,6 @@
-﻿#include "UIDatasourceUserWidgetExtension.h"
+﻿// Copyright Sharundaar. All Rights Reserved.
+
+#include "UIDatasourceUserWidgetExtension.h"
 
 #include "UIDatasourceSubsystem.h"
 
