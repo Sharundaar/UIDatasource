@@ -49,6 +49,12 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	void SetDatasource(FUIDatasourceHandle InHandle);
+
+	UFUNCTION(BlueprintCallable, DisplayName="Set Datasource", meta=(DefaultToSelf=UserWidget))
+	static void SetUserWidgetDatasource(UUserWidget* UserWidget, FUIDatasourceHandle Handle);
+
+	UFUNCTION(BlueprintCallable, meta=(DefaultToSelf=UserWidget))
+	static UUIDatasourceUserWidgetExtension* RegisterDatasourceExtension(UUserWidget* UserWidget);
 	
 	void UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle);
 	void AddBinding(const FUIDataBind& Binding);
@@ -60,8 +66,23 @@ protected:
 	TArray<FUIDataBind> Bindings;
 };
 
+USTRUCT()
+struct FUIDataBindTemplate
+{
+	GENERATED_BODY()
+	
+	UPROPERTY() FName BindDelegateName;
+	UPROPERTY() FString Path;
+};
+
 UCLASS()
 class UIDATASOURCE_API UUIDatasourceWidgetBlueprintGeneratedClassExtension : public UWidgetBlueprintGeneratedClassExtension
 {
 	GENERATED_BODY()
+
+public:
+	virtual void Initialize(UUserWidget* UserWidget) override;
+
+	UPROPERTY()
+	TArray<FUIDataBindTemplate> Bindings;
 };

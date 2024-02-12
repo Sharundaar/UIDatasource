@@ -29,7 +29,7 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual FLinearColor GetNodeTitleColor() const override;
 
-protected:
+public:
 	UPROPERTY(EditAnywhere)
 	FString Path;
 	

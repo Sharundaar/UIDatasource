@@ -3,6 +3,7 @@
 #include "UIDatasourceUserWidgetExtension.h"
 
 #include "UIDatasourceSubsystem.h"
+#include "Blueprint/UserWidget.h"
 
 void IUIDatasourceEventHandler::NativeOnDatasourceChanging(FUIDatasourceHandle Handle)
 {
@@ -61,6 +62,26 @@ void UUIDatasourceUserWidgetExtension::Destruct()
 	SetDatasource({});
 }
 
+void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget* UserWidget)
+{
+	Super::Initialize(UserWidget);
+
+	UUIDatasourceUserWidgetExtension* DatasourceExtension = UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UserWidget);
+	for(FUIDataBindTemplate& Binding : Bindings)
+	{
+		UFunction* Func = UserWidget->FindFunction(Binding.BindDelegateName);
+		if(ensure(Func))
+		{
+			FOnDatasourceChangedDelegateBP Delegate;
+			Delegate.BindUFunction(UserWidget, Binding.BindDelegateName);
+			DatasourceExtension->AddBinding({
+				Delegate,
+				Binding.Path
+			});
+		}
+	}
+}
+
 void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandle)
 {
 	if(InHandle != Handle)
@@ -78,4 +99,19 @@ void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandl
 			EvtHandler->NativeOnDatasourceChanged(Handle);
 		}
 	}
+}
+
+void UUIDatasourceUserWidgetExtension::SetUserWidgetDatasource(UUserWidget* UserWidget, FUIDatasourceHandle Handle)
+{
+	RegisterDatasourceExtension(UserWidget)->SetDatasource(Handle);
+}
+
+UUIDatasourceUserWidgetExtension* UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UUserWidget* UserWidget)
+{
+	UUIDatasourceUserWidgetExtension* Extension = UserWidget->GetExtension<UUIDatasourceUserWidgetExtension>();
+	if(!Extension)
+	{
+		Extension = UserWidget->AddExtension<UUIDatasourceUserWidgetExtension>();
+	}
+	return Extension;
 }

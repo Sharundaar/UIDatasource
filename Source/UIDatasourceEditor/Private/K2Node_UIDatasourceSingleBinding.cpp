@@ -17,6 +17,8 @@
 #include "AssetRegistry/IAssetRegistry.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 
+UE_DISABLE_OPTIMIZATION
+
 void UK2Node_UIDatasourceSingleBinding::CreateProperlyTypedModelOutputPin()
 {
 	Modify();
@@ -133,7 +135,11 @@ void UK2Node_UIDatasourceSingleBinding::ExpandNode(FKismetCompilerContext& Compi
 
 	CompilerContext.MovePinLinksToIntermediate(*ThenPin, *EventNode->GetThenPin());
 
-	UEdGraphPin* HandlePin = EventNode->FindPin(FName(TEXT("Handle")));
+	UEdGraphPin* EventArgsPin = EventNode->FindPin(FName(TEXT("EventArgs")));
+	check(EventNode->CanSplitPin(EventArgsPin));
+	EventArgsPin->GetSchema()->SplitPin(EventArgsPin, false);
+	UEdGraphPin* HandlePin = EventArgsPin->SubPins[1];
+	
 	const bool bNeitherNoneOrArchetypeType = !(Type == EUIDatasourceValueType::Void || Type == EUIDatasourceValueType::Archetype);
 	if (bNeitherNoneOrArchetypeType)
 	{
@@ -174,7 +180,7 @@ void UK2Node_UIDatasourceSingleBinding::ExpandNode(FKismetCompilerContext& Compi
 		GetDatasourceValueNode->FunctionReference.SetExternalMember(GetDatasourceValueFunctionName, UUIDatasourceBlueprintLibrary::StaticClass());
 		GetDatasourceValueNode->AllocateDefaultPins();
 		UEdGraphPin* ReturnPin = GetDatasourceValueNode->GetReturnValuePin();
-		UEdGraphPin* DatasourceHandlePin = GetDatasourceValueNode->FindPin(FName(TEXT("DatasourceHandle"))); // Name here is assumed to be the same for all GetDatasourceValueFunc
+		UEdGraphPin* DatasourceHandlePin = GetDatasourceValueNode->FindPin(FName(TEXT("Handle"))); // Name here is assumed to be the same for all GetDatasourceValueFunc
 		HandlePin->MakeLinkTo(DatasourceHandlePin);
 		HandlePin = ReturnPin;
 
@@ -339,3 +345,5 @@ FLinearColor UK2Node_UIDatasourceSingleBinding::GetNodeTitleColor() const
 {
 	return GetDefault<UGraphEditorSettings>()->EventNodeTitleColor;
 }
+
+UE_ENABLE_OPTIMIZATION

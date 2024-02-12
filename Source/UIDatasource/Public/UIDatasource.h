@@ -160,7 +160,7 @@ struct FUIDatasourceChangeEventArgs
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDatasourceChangedDelegate, FUIDatasourceChangeEventArgs, EventArgs);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnDatasourceChangedDelegateBP, FUIDatasourceChangeEventArgs, EventArgs);
 
-struct FUIDatasource
+struct UIDATASOURCE_API FUIDatasource
 {
 	FName Name;
 	

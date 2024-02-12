@@ -14,7 +14,7 @@ class UIDATASOURCE_API UUIDatasourceBlueprintLibrary : public UBlueprintFunction
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintPure, Category=UIDatasource)
+	UFUNCTION(BlueprintCallable, Category=UIDatasource)
 	static FUIDatasourceHandle FindOrCreateDatasource(FUIDatasourceHandle Parent, FString Path);
 
 	// @formatter:off
@@ -28,14 +28,14 @@ public:
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static TSoftObjectPtr<UTexture2D> GetImage(FUIDatasourceHandle Handle);
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static FGameplayTag GetGameplayTag(FUIDatasourceHandle Handle);
 
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetInt(FUIDatasourceHandle Handle, int32 Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetIntAsByte(FUIDatasourceHandle Handle, uint8 Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetFloat(FUIDatasourceHandle Handle, float Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetBool(FUIDatasourceHandle Handle, bool Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetString(FUIDatasourceHandle Handle, FString Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetFName(FUIDatasourceHandle Handle, FName Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool	SetText(FUIDatasourceHandle Handle, FText Value);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool SetImage(FUIDatasourceHandle Handle, TSoftObjectPtr<UTexture2D> Image);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static bool SetGameplayTag(FUIDatasourceHandle Handle, FGameplayTag Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetInt(FUIDatasourceHandle Handle, int32 Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetIntAsByte(FUIDatasourceHandle Handle, uint8 Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetFloat(FUIDatasourceHandle Handle, float Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetBool(FUIDatasourceHandle Handle, bool Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetString(FUIDatasourceHandle Handle, FString Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetFName(FUIDatasourceHandle Handle, FName Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetText(FUIDatasourceHandle Handle, FText Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetImage(FUIDatasourceHandle Handle, TSoftObjectPtr<UTexture2D> Image);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetGameplayTag(FUIDatasourceHandle Handle, FGameplayTag Value);
 	// @formatter:on
 };

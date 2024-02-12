@@ -9,6 +9,14 @@
 
 class UUIDatasourceArchetype;
 
+UENUM()
+enum class EUIDatasourceArchetypeImportMethod
+{
+	AsChild,
+	Inline,
+	AsArray,
+};
+
 USTRUCT()
 struct FUIDatasourceDescriptor
 {
@@ -18,13 +26,21 @@ struct FUIDatasourceDescriptor
 	FString Path;
 
 	UPROPERTY(EditAnywhere)
-	EUIDatasourceValueType Type;
+	EUIDatasourceValueType Type = EUIDatasourceValueType::Void;
 
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Enum"))
-	FString EnumPath;
+	FString EnumPath = "";
 
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Archetype"))
-	TObjectPtr<UUIDatasourceArchetype> Archetype;
+	TObjectPtr<UUIDatasourceArchetype> Archetype = nullptr;
+
+	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Archetype"))
+	EUIDatasourceArchetypeImportMethod ImportMethod = EUIDatasourceArchetypeImportMethod::AsChild;
+
+	bool IsInlineArchetype() const
+	{
+		return Archetype && ImportMethod == EUIDatasourceArchetypeImportMethod::Inline;
+	}
 };
 
 UCLASS()

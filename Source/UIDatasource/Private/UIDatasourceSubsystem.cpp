@@ -2,8 +2,6 @@
 
 #include "UIDatasourceSubsystem.h"
 
-#include <imgui.h>
-
 // checks that datasource is correctly allocated
 static bool IsValid(const FUIDatasource* Datasource)
 {

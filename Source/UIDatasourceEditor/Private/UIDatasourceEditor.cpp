@@ -5,6 +5,7 @@
 #include "GraphEditAction.h"
 #include "K2Node_UIDatasourceSingleBinding.h"
 #include "PropertyEditorModule.h"
+#include "UIDatasourceArchetype.h"
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "UMGEditorModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
@@ -39,7 +40,7 @@ public:
 
 	struct FListViewData
 	{
-		// FUIDatasourceArchetypeElement Element;
+		FUIDatasourceDescriptor Descriptor;
 		TWeakObjectPtr<UK2Node_UIDatasourceSingleBinding> Node;
 	};
 	TArray<TSharedPtr<FListViewData>> ListData;
@@ -63,28 +64,27 @@ void SUIDatasourcePanel::UpdateContent()
 	UUIDatasourceWidgetBlueprintExtension* Extension = UIDatasourceExtension.Get();
 	DatasourceArchetypeDetailsView->SetObject(Extension);
 
-	/* @TODO: Bring back DatasourceArchetype
-	if (Extension && Extension->DatasourceArchetype)
+	if (Extension && Extension->Archetype)
 	{
 		UWidgetBlueprint* WidgetBlueprint = Extension->GetWidgetBlueprint();
 		check(WidgetBlueprint);
 
 		ListData.Empty();
 		TArray<const UUIDatasourceArchetype*> Stack;
-		Stack.Add(Extension->DatasourceArchetype);
+		Stack.Add(Extension->Archetype);
 		while(!Stack.IsEmpty())
 		{
 			const UUIDatasourceArchetype* Archetype = Stack.Pop();
-			for (const FUIDatasourceArchetypeElement& Child : Archetype->Children)
+			for (const FUIDatasourceDescriptor& Descriptor : Archetype->GetDescriptors())
 			{
-				if(Child.IsInlineArchetype() && Child.Archetype)
+				if(Descriptor.IsInlineArchetype())
 				{
-					Stack.Push(Child.Archetype);
+					Stack.Push(Descriptor.Archetype);
 					continue;
 				}
 				
 				const TSharedPtr<FListViewData>& Elem = ListData.Add_GetRef(MakeShared<FListViewData>());
-				Elem->Element = Child;
+				Elem->Descriptor = Descriptor;
 				Elem->Node = nullptr;
 			}
 		}
@@ -99,7 +99,7 @@ void SUIDatasourcePanel::UpdateContent()
 		{
 			TSharedPtr<FListViewData>* FoundElement = ListData.FindByPredicate([Node](TSharedPtr<FListViewData> Elem)
 			{
-				return !Elem->Node.IsValid() && Elem->Element.Name == FName(Node->GetBindPath(), FNAME_Find);
+				return !Elem->Node.IsValid() && Elem->Descriptor.Path == Node->Path;
 			});
 			if (FoundElement)
 			{
@@ -108,19 +108,17 @@ void SUIDatasourcePanel::UpdateContent()
 			else
 			{
 				const TSharedPtr<FListViewData>& Elem = ListData.Add_GetRef(MakeShared<FListViewData>());
-				Elem->Element = FUIDatasourceArchetypeElement {
-					FName(Node->GetBindPath()),
-					Node->GetBindType(),
-					Node->GetEnumPath(),
+				Elem->Descriptor = FUIDatasourceDescriptor {
+					Node->Path,
+					Node->Type,
+					Node->EnumPath,
 					nullptr,
-					EUIDatasourceArchetypeInstanciationMethod::AsChild,
-					nullptr,
+					EUIDatasourceArchetypeImportMethod::AsChild
 				};
 				Elem->Node = Node;
 			}
 		}
 	}
-	*/
 	
 	ChildSlot[
 		SNew(SOverlay)
@@ -278,7 +276,7 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(1.0f)
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("TODO")/*@TODO: InItem->Element.Name.ToString()*/))
+			SNew(STextBlock).Text(FText::FromString(InItem->Descriptor.Path))
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
@@ -320,13 +318,10 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 					if(TargetGraph)
 					{
 						UK2Node_UIDatasourceSingleBinding* SingleBindingNode = NewObject<UK2Node_UIDatasourceSingleBinding>(TargetGraph);
-						/* @TODO:
-						SingleBindingNode->SetData(
-							Extension->DatasourceArchetype,
-							InItem->Element.Name.ToString(),
-							InItem->Element.Type,
-							InItem->Element.EnumPath);
-						*/
+						SingleBindingNode->SourceArchetype = Extension->Archetype;
+						SingleBindingNode->Path = InItem->Descriptor.Path;
+						SingleBindingNode->Type = InItem->Descriptor.Type;
+						SingleBindingNode->EnumPath = InItem->Descriptor.EnumPath;
 						SingleBindingNode->CreateNewGuid();
 						SingleBindingNode->PostPlacedNewNode();
 						SingleBindingNode->AllocateDefaultPins();
