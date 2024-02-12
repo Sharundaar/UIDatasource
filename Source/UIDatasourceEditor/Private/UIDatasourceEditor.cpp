@@ -1,4 +1,6 @@
-﻿#include "UIDatasourceEditor.h"
+﻿// Copyright Sharundaar. All Rights Reserved.
+
+#include "UIDatasourceEditor.h"
 
 #include "GraphEditAction.h"
 #include "K2Node_UIDatasourceSingleBinding.h"

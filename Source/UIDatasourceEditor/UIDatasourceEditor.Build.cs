@@ -1,4 +1,6 @@
-﻿using UnrealBuildTool;
+﻿// Copyright Sharundaar. All Rights Reserved.
+
+using UnrealBuildTool;
 
 public class UIDatasourceEditor : ModuleRules
 {
@@ -26,6 +28,7 @@ public class UIDatasourceEditor : ModuleRules
                 "UnrealEd",
                 "GameplayTags",
                 "KismetCompiler",
+                "GraphEditor",
             }
         );
     }

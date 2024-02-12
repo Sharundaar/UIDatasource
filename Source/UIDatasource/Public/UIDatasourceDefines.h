@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿// Copyright Sharundaar. All Rights Reserved.
+
+#pragma once
 
 UIDATASOURCE_API DECLARE_LOG_CATEGORY_EXTERN(LogDatasource, Log, All);
 
