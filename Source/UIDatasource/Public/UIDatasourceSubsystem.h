@@ -6,7 +6,7 @@
 
 #include "UIDatasourceSubsystem.generated.h"
 
-struct FUIDatasourcePool
+struct UIDATASOURCE_API FUIDatasourcePool
 {	
 public:
 	FUIDatasourcePool() = default;
@@ -44,7 +44,7 @@ public:
 };
 
 UCLASS()
-class UUIDatasourceSubsystem : public UEngineSubsystem
+class UIDATASOURCE_API UUIDatasourceSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 	
@@ -57,10 +57,13 @@ public:
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
 	virtual void Tick(float DeltaTime);
+	bool IsDesignerMockingEnabled() const;
+	void EnableDesignerMocking(bool bEnabled);
 
 	FUIDatasourcePool Pool;
 
 protected:
+	bool bIsDesignerMockingEnabled = false;
 	static UUIDatasourceSubsystem* Instance;
 };
 

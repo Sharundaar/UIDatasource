@@ -327,3 +327,13 @@ void UUIDatasourceSubsystem::Tick(float DeltaTime)
 	ImGui::End();
 #endif
 }
+
+bool UUIDatasourceSubsystem::IsDesignerMockingEnabled() const
+{
+	return bIsDesignerMockingEnabled;
+}
+
+void UUIDatasourceSubsystem::EnableDesignerMocking(bool bEnabled)
+{
+	bIsDesignerMockingEnabled = bEnabled;
+}

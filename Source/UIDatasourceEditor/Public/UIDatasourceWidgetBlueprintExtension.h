@@ -17,6 +17,8 @@ protected:
 	virtual void HandleEndCompilation() override;
 
 public:
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
 	DECLARE_MULTICAST_DELEGATE(FOnBindingChanged);
 	FOnBindingChanged OnBindingChanged;
 

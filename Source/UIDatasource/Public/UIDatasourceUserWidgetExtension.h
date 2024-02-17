@@ -3,6 +3,7 @@
 #pragma once
 
 #include "UIDatasource.h"
+#include "UIDatasourceArchetype.h"
 #include "UIDatasourceHandle.h"
 #include "Extensions/UserWidgetExtension.h"
 #include "Extensions/WidgetBlueprintGeneratedClassExtension.h"
@@ -73,6 +74,10 @@ struct FUIDataBindTemplate
 	
 	UPROPERTY() FName BindDelegateName;
 	UPROPERTY() FString Path;
+
+#if WITH_EDITORONLY_DATA
+	UPROPERTY() FUIDatasourceDescriptor Descriptor;
+#endif
 };
 
 UCLASS()
@@ -82,6 +87,9 @@ class UIDATASOURCE_API UUIDatasourceWidgetBlueprintGeneratedClassExtension : pub
 
 public:
 	virtual void Initialize(UUserWidget* UserWidget) override;
+#if WITH_EDITORONLY_DATA
+	virtual void PreConstruct(UUserWidget* UserWidget, bool IsDesignTime) override;
+#endif
 
 	UPROPERTY()
 	TArray<FUIDataBindTemplate> Bindings;

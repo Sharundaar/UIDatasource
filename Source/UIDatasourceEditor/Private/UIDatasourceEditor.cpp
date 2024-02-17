@@ -6,6 +6,7 @@
 #include "K2Node_UIDatasourceSingleBinding.h"
 #include "PropertyEditorModule.h"
 #include "UIDatasourceArchetype.h"
+#include "UIDatasourceSubsystem.h"
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "UMGEditorModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
@@ -152,6 +153,18 @@ void SUIDatasourcePanel::UpdateContent()
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				DatasourceArchetypeDetailsView ? DatasourceArchetypeDetailsView.ToSharedRef() : SNullWidget::NullWidget
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+SHorizontalBox::Slot().AutoWidth() [ SNew(STextBlock).Text(INVTEXT("Mock Datasource")) ]
+				+SHorizontalBox::Slot().AutoWidth()
+				[ SNew(SCheckBox)
+					.IsChecked_Lambda([]() { return UUIDatasourceSubsystem::Get()->IsDesignerMockingEnabled() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+					.OnCheckStateChanged_Lambda([](ECheckBoxState State) {
+						UUIDatasourceSubsystem::Get()->EnableDesignerMocking(State == ECheckBoxState::Checked);
+					})
+				]
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
@@ -358,14 +371,14 @@ public:
 	virtual TSharedRef<SWidget> CreateTabBody(const FWorkflowTabSpawnInfo& Info) const override
 	{
 		TSharedPtr<FWidgetBlueprintEditor> BlueprintEditorPtr = StaticCastSharedPtr<FWidgetBlueprintEditor>(WeakBlueprintEditor.Pin());
-		return SNew(SUIDatasourcePanel, BlueprintEditorPtr).AddMetaData<FTagMetaData>(FTagMetaData(TEXT("UIDatasourcePanel")));
+		return SNew(SUIDatasourcePanel, BlueprintEditorPtr).AddMetaData<FTagMetaData>(FTagMetaData(TabID));
 	}
 
 protected:
 	TWeakPtr<FWidgetBlueprintEditor> WeakBlueprintEditor;
 };
 
-const FName FUIDatasourceSummoner::TabID = "UIDatasources";
+const FName FUIDatasourceSummoner::TabID = "UIDatasourcePanel";
 
 void FUIDatasourceEditorModule::StartupModule()
 {
@@ -380,7 +393,8 @@ void FUIDatasourceEditorModule::ShutdownModule()
 
 void FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab(const FWidgetBlueprintApplicationMode& ApplicationMode, FWorkflowAllowedTabSet& TabFactories)
 {
-	if(ApplicationMode.GetModeName() == FWidgetBlueprintApplicationModes::GraphMode)
+	if(ApplicationMode.GetModeName() == FWidgetBlueprintApplicationModes::GraphMode
+		|| ApplicationMode.GetModeName() == FWidgetBlueprintApplicationModes::DesignerMode)
 	{
 		TabFactories.RegisterFactory(MakeShared<FUIDatasourceSummoner>(ApplicationMode.GetBlueprintEditor()));
 	}

@@ -50,7 +50,7 @@ void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 	{
 		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
 		{
-			Datasource->OnDatasourceChanged.Add(Binding.Bind);
+			Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
 			// ReSharper disable once CppExpressionWithoutSideEffects
 			Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
 		}
@@ -64,8 +64,6 @@ void UUIDatasourceUserWidgetExtension::Destruct()
 
 void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget* UserWidget)
 {
-	Super::Initialize(UserWidget);
-
 	UUIDatasourceUserWidgetExtension* DatasourceExtension = UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UserWidget);
 	for(FUIDataBindTemplate& Binding : Bindings)
 	{
@@ -79,6 +77,29 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget
 				Binding.Path
 			});
 		}
+	}
+}
+
+void UUIDatasourceWidgetBlueprintGeneratedClassExtension::PreConstruct(UUserWidget* UserWidget, bool IsDesignTime)
+{
+	if(UUIDatasourceSubsystem::Get()->IsDesignerMockingEnabled())
+	{
+		if(UserWidget->IsDesignTime()) // Initialize isn't called in the designer, so call it manually here
+		{
+			Initialize(UserWidget);
+		}
+		FUIDatasource* MockDatasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, "Mock");
+		UUIDatasourceArchetype* Archetype = NewObject<UUIDatasourceArchetype>(this, UUIDatasourceArchetype::StaticClass(), "MockArchetype", RF_Transient);
+
+		TArray<FUIDatasourceDescriptor> Descriptors;
+		for(auto& C: Bindings)
+		{
+			Descriptors.Add(C.Descriptor);
+		}
+		Archetype->SetChildren(Descriptors);
+		Archetype->MockDatasource(MockDatasource);
+
+		UserWidget->GetExtension<UUIDatasourceUserWidgetExtension>()->SetDatasource(MockDatasource);
 	}
 }
 

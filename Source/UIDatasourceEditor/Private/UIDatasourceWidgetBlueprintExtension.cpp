@@ -28,7 +28,17 @@ void UUIDatasourceWidgetBlueprintExtension::HandleFinishCompilingClass(UWidgetBl
 			Graph->GetNodesOfClass<UK2Node_UIDatasourceSingleBinding>(SingleBindingNodes);
 			for (const UK2Node_UIDatasourceSingleBinding* Node : SingleBindingNodes)
 			{
-				UIDatasourceExtension->Bindings.Add({ Node->GetGeneratedEventName(), Node->Path });
+				FUIDataBindTemplate Template;
+				Template.BindDelegateName = Node->GetGeneratedEventName();
+				Template.Path = Node->Path;
+#if WITH_EDITORONLY_DATA
+				Template.Descriptor = {
+					Node->Path,
+					Node->Type,
+					Node->EnumPath,
+				};
+#endif
+				UIDatasourceExtension->Bindings.Add(Template);
 			}
 		}
 
@@ -38,4 +48,14 @@ void UUIDatasourceWidgetBlueprintExtension::HandleFinishCompilingClass(UWidgetBl
 void UUIDatasourceWidgetBlueprintExtension::HandleEndCompilation()
 {
 	CurrentContext = nullptr;
+}
+
+void UUIDatasourceWidgetBlueprintExtension::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	if(PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(UUIDatasourceWidgetBlueprintExtension, Archetype))
+	{
+		OnBindingChanged.Broadcast();
+	}
 }

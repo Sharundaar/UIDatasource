@@ -49,12 +49,24 @@ class UIDATASOURCE_API UUIDatasourceArchetype : public UDataAsset
 	GENERATED_BODY()
 
 public:
+	void MockDatasource(FUIDatasource* Datasource) const;
+	void GenerateDatasource(FUIDatasource* Datasource) const;
+	
 	UFUNCTION(BlueprintCallable)
 	void GenerateDatasource(FUIDatasourceHandle Handle) const;
 
+	UFUNCTION(BlueprintCallable)
+	void MockDatasource(FUIDatasourceHandle Handle) const;
+	
 	const TArray<FUIDatasourceDescriptor>& GetDescriptors() const; 
+
+	void SetChildren(const TArray<FUIDatasourceDescriptor>& Descriptors);
 	
 protected:
 	UPROPERTY(EditAnywhere)
 	TArray<FUIDatasourceDescriptor> Children;
+
+	static TArray<FName> MockNameSource;
+	static TArray<FString> MockStringSource;
+	static TArray<FText> MockTextSource;
 };
