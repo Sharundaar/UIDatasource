@@ -12,6 +12,8 @@
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Widgets/Images/SLayeredImage.h"
+#include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SSeparator.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
 
@@ -48,7 +50,8 @@ public:
 		FUIDatasourceDescriptor Descriptor;
 		TWeakObjectPtr<UK2Node_UIDatasourceSingleBinding> Node; // Can be nullptr
 	};
-	TArray<TSharedPtr<FListViewData>> ListData;
+	TArray<TSharedPtr<FListViewData>> ArchetypeListData;
+	TArray<TSharedPtr<FListViewData>> CustomListData;
 	TSharedRef<ITableRow> GenerateListRow(TSharedPtr<FListViewData> InItem, const TSharedRef<STableViewBase>& InOwningTable);
 };
 
@@ -62,6 +65,8 @@ void SUIDatasourcePanel::UpdateContent()
 		DetailsViewArgs.bShowPropertyMatrixButton = false;
 		DetailsViewArgs.bShowOptions = false;
 		DetailsViewArgs.NotifyHook = this;
+		DetailsViewArgs.bHideSelectionTip = true;
+		DetailsViewArgs.bAllowSearch = false;
 
 		DatasourceArchetypeDetailsView = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	}
@@ -74,7 +79,9 @@ void SUIDatasourcePanel::UpdateContent()
 		UWidgetBlueprint* WidgetBlueprint = Extension->GetWidgetBlueprint();
 		check(WidgetBlueprint);
 
-		ListData.Empty();
+		ArchetypeListData.Empty();
+		CustomListData.Empty();
+		
 		TArray<const UUIDatasourceArchetype*> Stack;
 		Stack.Add(Extension->Archetype);
 		while(!Stack.IsEmpty())
@@ -88,7 +95,7 @@ void SUIDatasourcePanel::UpdateContent()
 					continue;
 				}
 				
-				const TSharedPtr<FListViewData>& Elem = ListData.Add_GetRef(MakeShared<FListViewData>());
+				const TSharedPtr<FListViewData>& Elem = ArchetypeListData.Add_GetRef(MakeShared<FListViewData>());
 				Elem->Descriptor = Descriptor;
 				Elem->Node = nullptr;
 			}
@@ -102,7 +109,7 @@ void SUIDatasourcePanel::UpdateContent()
 
 		for (UK2Node_UIDatasourceSingleBinding* Node : Nodes)
 		{
-			TSharedPtr<FListViewData>* FoundElement = ListData.FindByPredicate([Node](TSharedPtr<FListViewData> Elem)
+			TSharedPtr<FListViewData>* FoundElement = ArchetypeListData.FindByPredicate([Node](TSharedPtr<FListViewData> Elem)
 			{
 				return !Elem->Node.IsValid() && Elem->Descriptor.Path == Node->Path;
 			});
@@ -112,7 +119,7 @@ void SUIDatasourcePanel::UpdateContent()
 			}
 			else
 			{
-				const TSharedPtr<FListViewData>& Elem = ListData.Add_GetRef(MakeShared<FListViewData>());
+				const TSharedPtr<FListViewData>& Elem = CustomListData.Add_GetRef(MakeShared<FListViewData>());
 				Elem->Descriptor = FUIDatasourceDescriptor {
 					Node->Path,
 					Node->Type,
@@ -145,38 +152,59 @@ void SUIDatasourcePanel::UpdateContent()
 		]
 		+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Fill)
 		[
-			SNew(SVerticalBox)
-			.Visibility_Lambda([this]()
-			{
-				if (UIDatasourceExtension.IsValid())
+			SNew(SScrollBox).Orientation(Orient_Vertical)
+			+ SScrollBox::Slot()
+			[
+				SNew(SVerticalBox)
+				.Visibility_Lambda([this]()
 				{
-					return EVisibility::Visible;
-				}
-				return EVisibility::Collapsed;
-			})
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				DatasourceArchetypeDetailsView ? DatasourceArchetypeDetailsView.ToSharedRef() : SNullWidget::NullWidget
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+SHorizontalBox::Slot().AutoWidth() [ SNew(STextBlock).Text(INVTEXT("Mock Datasource")) ]
-				+SHorizontalBox::Slot().AutoWidth()
-				[ SNew(SCheckBox)
-					.IsChecked_Lambda([]() { return UUIDatasourceSubsystem::Get()->IsDesignerMockingEnabled() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-					.OnCheckStateChanged_Lambda([](ECheckBoxState State) {
-						UUIDatasourceSubsystem::Get()->EnableDesignerMocking(State == ECheckBoxState::Checked);
-					})
+					if (UIDatasourceExtension.IsValid())
+					{
+						return EVisibility::Visible;
+					}
+					return EVisibility::Collapsed;
+				})
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					DatasourceArchetypeDetailsView ? DatasourceArchetypeDetailsView.ToSharedRef() : SNullWidget::NullWidget
 				]
-			]
-			+ SVerticalBox::Slot().FillHeight(1.0f)
-			[
-				SNew(SListView<TSharedPtr<FListViewData>>)
-				.ListItemsSource(&ListData)
-				.SelectionMode(ESelectionMode::None)
-				.ItemHeight(20.0f)
-				.OnGenerateRow(this, &SUIDatasourcePanel::GenerateListRow)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+SHorizontalBox::Slot().AutoWidth() [ SNew(STextBlock).Text(INVTEXT("Mock Datasource")) ]
+					+SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SCheckBox)
+						.IsChecked_Lambda([]() { return UUIDatasourceSubsystem::Get()->IsDesignerMockingEnabled() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([](ECheckBoxState State) {
+							UUIDatasourceSubsystem::Get()->EnableDesignerMocking(State == ECheckBoxState::Checked);
+						})
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SSeparator).Orientation(Orient_Vertical).Thickness(4.0f)
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SListView<TSharedPtr<FListViewData>>)
+					.ListItemsSource(&ArchetypeListData)
+					.SelectionMode(ESelectionMode::None)
+					.ItemHeight(20.0f)
+					.OnGenerateRow(this, &SUIDatasourcePanel::GenerateListRow)
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SSeparator).Orientation(Orient_Vertical).Thickness(4.0f)
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SListView<TSharedPtr<FListViewData>>)
+					.ListItemsSource(&CustomListData)
+					.SelectionMode(ESelectionMode::None)
+					.ItemHeight(20.0f)
+					.OnGenerateRow(this, &SUIDatasourcePanel::GenerateListRow)
+				]
 			]
 		]
 	];
@@ -382,6 +410,70 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
+			SNew(SButton)
+				.ButtonStyle( FAppStyle::Get(), "SimpleButton" )
+				.ContentPadding(0)
+				.OnClicked_Lambda([WeakEditor = WeakWidgetEditor, WeakExtension = UIDatasourceExtension, InItem]()
+				{
+					TSharedPtr<FWidgetBlueprintEditor> Editor = WeakEditor.Pin();
+					UUIDatasourceWidgetBlueprintExtension* Extension = WeakExtension.Get();
+					if(!Editor)
+					{
+						return FReply::Unhandled();
+					}
+
+					if(!Extension)
+					{
+						return FReply::Unhandled();
+					}
+					
+					if (UK2Node_UIDatasourceSingleBinding* Node = InItem->Node.Get())
+					{
+						Editor->JumpToNode(Node);
+					}
+					else
+					{
+						UWidgetBlueprint* WidgetBlueprint = Editor->GetWidgetBlueprintObj();
+						UEdGraph* TargetGraph = WidgetBlueprint && WidgetBlueprint->UbergraphPages.Num() > 0 ? WidgetBlueprint->UbergraphPages[0] : nullptr;
+
+						if(TargetGraph)
+						{
+							UK2Node_UIDatasourceSingleBinding* SingleBindingNode = NewObject<UK2Node_UIDatasourceSingleBinding>(TargetGraph);
+							SingleBindingNode->SourceArchetype = Extension->Archetype;
+							SingleBindingNode->Path = InItem->Descriptor.Path;
+							SingleBindingNode->Type = InItem->Descriptor.Type;
+							SingleBindingNode->EnumPath = InItem->Descriptor.EnumPath;
+							SingleBindingNode->CreateNewGuid();
+							SingleBindingNode->PostPlacedNewNode();
+							SingleBindingNode->AllocateDefaultPins();
+							const FVector2D NewPosition = TargetGraph->GetGoodPlaceForNewNode();
+							SingleBindingNode->NodePosX = NewPosition.X;
+							SingleBindingNode->NodePosY = NewPosition.Y;
+
+							TargetGraph->AddNode(SingleBindingNode, true, true);
+						}
+					}
+
+					return FReply::Handled();
+				})
+				[ 
+					SNew( SImage )
+					.Image_Lambda([WeakNode = InItem->Node]()
+					{
+						if (UK2Node_UIDatasourceSingleBinding* Node = WeakNode.Get())
+						{
+							return FAppStyle::GetBrush("Icons.Search");
+						}
+						else
+						{
+							return FAppStyle::GetBrush("Icons.PlusCircle");
+						}
+					})
+					.ColorAndOpacity( FSlateColor::UseForeground() )
+				]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
 			SNew(SImage)
 			.Image(FBlueprintEditorUtils::GetIconFromPin(PinType, true))
 			.ColorAndOpacity(Schema->GetPinTypeColor(PinType))
@@ -389,64 +481,6 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 		[
 			SNew(STextBlock).Text(FText::FromString(InItem->Descriptor.Path))
-		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(SButton)
-			.Text_Lambda([WeakNode = InItem->Node]()
-			{
-				if (UK2Node_UIDatasourceSingleBinding* Node = WeakNode.Get())
-				{
-					return INVTEXT("Go to Binding");
-				}
-				else
-				{
-					return INVTEXT("Create Binding");
-				}
-			})
-			.OnClicked_Lambda([WeakEditor = WeakWidgetEditor, WeakExtension = UIDatasourceExtension, InItem]()
-			{
-				TSharedPtr<FWidgetBlueprintEditor> Editor = WeakEditor.Pin();
-				UUIDatasourceWidgetBlueprintExtension* Extension = WeakExtension.Get();
-				if(!Editor)
-				{
-					return FReply::Unhandled();
-				}
-
-				if(!Extension)
-				{
-					return FReply::Unhandled();
-				}
-				
-				if (UK2Node_UIDatasourceSingleBinding* Node = InItem->Node.Get())
-				{
-					Editor->JumpToNode(Node);
-				}
-				else
-				{
-					UWidgetBlueprint* WidgetBlueprint = Editor->GetWidgetBlueprintObj();
-					UEdGraph* TargetGraph = WidgetBlueprint && WidgetBlueprint->UbergraphPages.Num() > 0 ? WidgetBlueprint->UbergraphPages[0] : nullptr;
-
-					if(TargetGraph)
-					{
-						UK2Node_UIDatasourceSingleBinding* SingleBindingNode = NewObject<UK2Node_UIDatasourceSingleBinding>(TargetGraph);
-						SingleBindingNode->SourceArchetype = Extension->Archetype;
-						SingleBindingNode->Path = InItem->Descriptor.Path;
-						SingleBindingNode->Type = InItem->Descriptor.Type;
-						SingleBindingNode->EnumPath = InItem->Descriptor.EnumPath;
-						SingleBindingNode->CreateNewGuid();
-						SingleBindingNode->PostPlacedNewNode();
-						SingleBindingNode->AllocateDefaultPins();
-						const FVector2D NewPosition = TargetGraph->GetGoodPlaceForNewNode();
-						SingleBindingNode->NodePosX = NewPosition.X;
-						SingleBindingNode->NodePosY = NewPosition.Y;
-
-						TargetGraph->AddNode(SingleBindingNode, true, true);
-					}
-				}
-
-				return FReply::Handled();
-			})
 		]
 	];
 }
