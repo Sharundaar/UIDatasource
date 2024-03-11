@@ -10,6 +10,8 @@
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "UMGEditorModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
+#include "Kismet2/BlueprintEditorUtils.h"
+#include "Widgets/Images/SLayeredImage.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
 
@@ -42,7 +44,7 @@ public:
 	struct FListViewData
 	{
 		FUIDatasourceDescriptor Descriptor;
-		TWeakObjectPtr<UK2Node_UIDatasourceSingleBinding> Node;
+		TWeakObjectPtr<UK2Node_UIDatasourceSingleBinding> Node; // Can be nullptr
 	};
 	TArray<TSharedPtr<FListViewData>> ListData;
 	TSharedRef<ITableRow> GenerateListRow(TSharedPtr<FListViewData> InItem, const TSharedRef<STableViewBase>& InOwningTable);
@@ -282,16 +284,79 @@ SUIDatasourcePanel::~SUIDatasourcePanel()
 	BindingChangedEventHandler.Reset();
 }
 
+FEdGraphPinType GetPinTypeForDescriptor(const FUIDatasourceDescriptor& Descriptor)
+{
+	FEdGraphPinType PinType = {};
+	
+	switch (Descriptor.Type)
+	{
+	case EUIDatasourceValueType::Int:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Int;
+		break;
+	case EUIDatasourceValueType::Bool:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
+		break;
+	case EUIDatasourceValueType::Float:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Real;
+		PinType.PinSubCategory = UEdGraphSchema_K2::PC_Float;
+		break;
+	case EUIDatasourceValueType::Text:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Text;
+		break;
+	case EUIDatasourceValueType::Name:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Name;
+		break;
+	case EUIDatasourceValueType::String:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_String;
+		break;
+	case EUIDatasourceValueType::GameplayTag:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		PinType.PinSubCategoryObject = FGameplayTag::StaticStruct();
+		break;
+	case EUIDatasourceValueType::Image:
+		PinType.PinCategory = UEdGraphSchema_K2::PC_SoftObject;
+		PinType.PinSubCategoryObject = UTexture2D::StaticClass();
+		break;
+	case EUIDatasourceValueType::Enum:
+		if (!Descriptor.EnumPath.IsEmpty())
+		{
+			PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
+			PinType.PinSubCategoryObject = FindObject<UEnum>(nullptr, *Descriptor.EnumPath);
+		}
+		else
+		{
+			PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
+		}
+		break;
+	case EUIDatasourceValueType::Archetype:
+	case EUIDatasourceValueType::Void: // default to sending the datasource handle
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		PinType.PinSubCategoryObject = FUIDatasourceHandle::StaticStruct();
+		break;
+	default: checkf(false, TEXT("Missing enum value implementation %d"), Descriptor.Type);
+	}
+	
+	return PinType;
+}
+
 TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewData> InItem, const TSharedRef<STableViewBase>& InOwningTable)
 {
+	const FEdGraphPinType PinType = GetPinTypeForDescriptor(InItem->Descriptor);
+	const FSlateBrush* TypeBrush = FBlueprintEditorUtils::GetIconFromPin(PinType, true);
+	const UEdGraphSchema_K2* Schema = GetDefault<UEdGraphSchema_K2>();
+	
 	return SNew(STableRow<TSharedPtr<FListViewData>>, InOwningTable)
 	[
 		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(SImage).Image(TypeBrush).ColorAndOpacity(Schema->GetPinTypeColor(PinType))
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 		[
 			SNew(STextBlock).Text(FText::FromString(InItem->Descriptor.Path))
 		]
-		+ SHorizontalBox::Slot().AutoWidth()
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SButton)
 			.Text_Lambda([WeakNode = InItem->Node]()

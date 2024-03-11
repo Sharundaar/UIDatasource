@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "K2Node.h"
 #include "UIDatasource.h"
 #include "K2Node_UIDatasourceSingleBinding.generated.h"
