@@ -80,6 +80,7 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget
 	}
 }
 
+#if WITH_EDITORONLY_DATA
 void UUIDatasourceWidgetBlueprintGeneratedClassExtension::PreConstruct(UUserWidget* UserWidget, bool IsDesignTime)
 {
 	if(UUIDatasourceSubsystem::Get()->IsDesignerMockingEnabled())
@@ -102,6 +103,7 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::PreConstruct(UUserWidg
 		UserWidget->GetExtension<UUIDatasourceUserWidgetExtension>()->SetDatasource(MockDatasource);
 	}
 }
+#endif
 
 void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandle)
 {
