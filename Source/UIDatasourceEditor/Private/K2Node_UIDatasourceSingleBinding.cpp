@@ -228,16 +228,16 @@ void UK2Node_UIDatasourceSingleBinding::GetMenuActions(FBlueprintActionDatabaseR
 			{
 				AssetRegistry.OnFilesLoaded().AddLambda([]() { FBlueprintActionDatabase::Get().RefreshClassActions(StaticClass()); });
 			}
-
-			{
-				UBlueprintNodeSpawner* NodeSpawner = UBlueprintNodeSpawner::Create(GetClass());
-				NodeSpawner->DefaultMenuSignature.Category = INVTEXT("UIDatasource Bindings");
-				NodeSpawner->DefaultMenuSignature.MenuName = INVTEXT("Bind to Custom Model...");
-				check(NodeSpawner != nullptr);
-							
-				NodeSpawner->CustomizeNodeDelegate = UBlueprintNodeSpawner::FCustomizeNodeDelegate::CreateStatic(CustomizeArchetypeNodeLambda, TWeakObjectPtr<const UUIDatasourceArchetype>(), FUIDatasourceDescriptor{});
-				ActionRegistrar.AddBlueprintAction(GetClass(), NodeSpawner);
-			}
+		}
+		
+		{
+			UBlueprintNodeSpawner* NodeSpawner = UBlueprintNodeSpawner::Create(GetClass());
+			NodeSpawner->DefaultMenuSignature.Category = INVTEXT("UIDatasource Bindings");
+			NodeSpawner->DefaultMenuSignature.MenuName = INVTEXT("Bind to Custom Model...");
+			check(NodeSpawner != nullptr);
+						
+			NodeSpawner->CustomizeNodeDelegate = UBlueprintNodeSpawner::FCustomizeNodeDelegate::CreateStatic(CustomizeArchetypeNodeLambda, TWeakObjectPtr<const UUIDatasourceArchetype>(), FUIDatasourceDescriptor{});
+			ActionRegistrar.AddBlueprintAction(GetClass(), NodeSpawner);
 		}
 
 		TArray<FAssetData> ActionAssets;

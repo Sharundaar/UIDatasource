@@ -31,6 +31,7 @@ public:
 	FReply HandleCreateUIDatasourceClicked();
 	void HandleExtensionAdded(UBlueprintExtension* BlueprintExtension);
 	void OnBPUbergraphChanged(const FEdGraphEditAction& EdGraphEditAction);
+	void OnBPUbergraphPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent, const FString& String);
 	void Construct(const FArguments& InArgs, TSharedPtr<FWidgetBlueprintEditor> Editor);
 	SUIDatasourcePanel() = default;
 	virtual ~SUIDatasourcePanel() override;
@@ -39,6 +40,7 @@ public:
 	TWeakPtr<FWidgetBlueprintEditor> WeakWidgetEditor;
 	TSharedPtr<IDetailsView> DatasourceArchetypeDetailsView;
 	TMap<TWeakObjectPtr<UEdGraph>, FDelegateHandle> GraphChangedDelegates;
+	TMap<TWeakObjectPtr<UEdGraph>, FDelegateHandle> GraphPropertyChangedDelegates;
 	FDelegateHandle BindingChangedEventHandler;
 
 	struct FListViewData
@@ -231,6 +233,26 @@ void SUIDatasourcePanel::OnBPUbergraphChanged(const FEdGraphEditAction& EdGraphE
 	}
 }
 
+void SUIDatasourcePanel::OnBPUbergraphPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName)
+{
+	bool bReconstructView = false;
+	const int32 NumObject = PropertyChangedEvent.GetNumObjectsBeingEdited();
+	for(int32 Idx = 0; Idx<NumObject; ++Idx)
+	{
+		const UObject* Obj = PropertyChangedEvent.GetObjectBeingEdited(Idx);
+		if(const UK2Node_UIDatasourceSingleBinding* BindingNode = Cast<UK2Node_UIDatasourceSingleBinding>(Obj))
+		{
+			bReconstructView = true;
+			break;
+		}
+	}
+
+	if (bReconstructView)
+	{
+		UpdateContent();
+	}
+}
+
 void SUIDatasourcePanel::Construct(const FArguments& InArgs, TSharedPtr<FWidgetBlueprintEditor> Editor)
 {
 	WeakWidgetEditor = Editor;
@@ -241,6 +263,7 @@ void SUIDatasourcePanel::Construct(const FArguments& InArgs, TSharedPtr<FWidgetB
 	for (UEdGraph* Graph : WidgetBlueprint->UbergraphPages)
 	{
 		GraphChangedDelegates.Add(Graph, Graph->AddOnGraphChangedHandler(FOnGraphChanged::FDelegate::CreateRaw(this, &SUIDatasourcePanel::OnBPUbergraphChanged)));
+		GraphPropertyChangedDelegates.Add(Graph, Graph->AddPropertyChangedNotifier(FOnPropertyChanged::FDelegate::CreateRaw(this, &SUIDatasourcePanel::OnBPUbergraphPropertyChanged)));
 	}
 
 	UUIDatasourceWidgetBlueprintExtension* UIDatasourceExtensionPtr = UUIDatasourceWidgetBlueprintExtension::GetExtension<UUIDatasourceWidgetBlueprintExtension>(WidgetBlueprint);
@@ -276,6 +299,16 @@ SUIDatasourcePanel::~SUIDatasourcePanel()
 		Delegate.Reset();
 	}
 	GraphChangedDelegates.Empty();
+	
+	for (auto& [WeakGraph, Delegate] : GraphPropertyChangedDelegates)
+	{
+		if (UEdGraph* Graph = WeakGraph.Get())
+		{
+			Graph->RemovePropertyChangedNotifier(Delegate);
+		}
+		Delegate.Reset();
+	}
+	GraphPropertyChangedDelegates.Empty();
 
 	if(auto Extension = UIDatasourceExtension.Get())
 	{
@@ -342,7 +375,6 @@ FEdGraphPinType GetPinTypeForDescriptor(const FUIDatasourceDescriptor& Descripto
 TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewData> InItem, const TSharedRef<STableViewBase>& InOwningTable)
 {
 	const FEdGraphPinType PinType = GetPinTypeForDescriptor(InItem->Descriptor);
-	const FSlateBrush* TypeBrush = FBlueprintEditorUtils::GetIconFromPin(PinType, true);
 	const UEdGraphSchema_K2* Schema = GetDefault<UEdGraphSchema_K2>();
 	
 	return SNew(STableRow<TSharedPtr<FListViewData>>, InOwningTable)
@@ -350,7 +382,9 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
-			SNew(SImage).Image(TypeBrush).ColorAndOpacity(Schema->GetPinTypeColor(PinType))
+			SNew(SImage)
+			.Image(FBlueprintEditorUtils::GetIconFromPin(PinType, true))
+			.ColorAndOpacity(Schema->GetPinTypeColor(PinType))
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 		[
