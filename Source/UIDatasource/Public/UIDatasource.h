@@ -69,6 +69,7 @@ struct FUIDatasourceValue
 			return Value.Get<T>() == Val;
 		}
 	}
+
 	template<typename T>
 	bool Set(const T& NewValue)
 	{
@@ -96,6 +97,7 @@ struct FUIDatasourceValue
 		UE_LOG(LogDatasource, Warning, TEXT("Tried to assign a value of incompatible type in datasource value (Found %llu, Expected %llu)"), FValueType::IndexOfType<T>(), Value.GetIndex());
 		return false;
 	}
+
 	template<typename T>
 	T Get()
 	{
@@ -108,9 +110,10 @@ struct FUIDatasourceValue
 			return Value.Get<T>();
 		}
 
-		UE_LOG(LogDatasource, Warning, TEXT("Tried to get a value of incompatible type (Found %llu, Expected %llu), returning default"), FValue::IndexOfType<T>(), Value.GetIndex());
+		UE_LOG(LogDatasource, Warning, TEXT("Tried to get a value of incompatible type (Found %llu, Expected %llu), returning default"), FValueType::IndexOfType<T>(), Value.GetIndex());
 		return {};
 	}
+	
 	template<typename T>
 	bool TryGet(T& OutValue)
 	{
