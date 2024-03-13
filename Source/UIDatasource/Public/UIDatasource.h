@@ -183,6 +183,9 @@ struct UIDATASOURCE_API FUIDatasource
 
 	void OnValueChanged() const;
 
+	FUIDatasource* FindOrCreateFromPath(const FString& Path);
+	FUIDatasource* FindFromPath(const FString& Path) const;
+	
 	template<typename T>
 	bool Set(T InValue)
 	{
@@ -205,21 +208,9 @@ struct UIDATASOURCE_API FUIDatasource
 	{
 		return Value.TryGet<T>(OutValue);
 	}
+
+	FUIDatasource& operator[](const FString& Path);
+	FUIDatasource& operator[](const FString& Path) const;
 };
 static_assert(sizeof(FUIDatasourceHeader) <= sizeof(FUIDatasource), "We need to be able to fit a Header in the space of a normal Datasource.");
 
-inline FUIDatasourcePool* FUIDatasource::GetPool() const
-{
-	return reinterpret_cast<const FUIDatasourceHeader*>(this - static_cast<int>(Id))->Pool;
-}
-
-inline void FUIDatasource::OnValueChanged() const
-{
-	UIDATASOURCE_FUNC_TRACE()
-	
-	OnDatasourceChanged.Broadcast({
-		EUIDatasourceChangeEventKind::ValueSet,
-		this
-	});
-}
- 

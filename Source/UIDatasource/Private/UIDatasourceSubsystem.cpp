@@ -150,12 +150,14 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateDatasource(FUIDatasource* Parent, 
 	return Current;
 }
 
-FUIDatasource* FUIDatasourcePool::FindDatasource(FUIDatasource* Parent, const FString& Path)
+FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, const FString& Path)
 {
 	FStringView StrView = Path;
 	int32 DotPos;
 
-	FUIDatasource* Current = Parent; 
+	// @NOTE: Remove const qualifier here so we can return non-const pointer
+	// We won't modify parent anywhere in this path so it's fine
+	FUIDatasource* Current = const_cast<FUIDatasource*>(Parent);
 	if(!Current)
 	{
 		Current = GetRootDatasource();

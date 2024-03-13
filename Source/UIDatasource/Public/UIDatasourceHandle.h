@@ -8,7 +8,7 @@
 struct FUIDatasource;
 
 USTRUCT(BlueprintType)
-struct FUIDatasourceHandle
+struct UIDATASOURCE_API FUIDatasourceHandle
 {
 	GENERATED_BODY()
 
