@@ -6,6 +6,8 @@
 
 #include "UIDatasourceSubsystem.generated.h"
 
+#define WITH_DATASOURCE_DEBUG_IMGUI 0
+
 struct UIDATASOURCE_API FUIDatasourcePool
 {	
 public:
@@ -56,7 +58,10 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
-	virtual void Tick(float DeltaTime);
+#if WITH_DATASOURCE_DEBUG_IMGUI
+	void DrawDebugUI();
+#endif
+	
 	bool IsDesignerMockingEnabled() const;
 	void EnableDesignerMocking(bool bEnabled);
 

@@ -2,6 +2,10 @@
 
 #include "UIDatasourceSubsystem.h"
 
+#if WITH_DATASOURCE_DEBUG_IMGUI
+#include "imgui.h"
+#endif
+
 // checks that datasource is correctly allocated
 static bool IsValid(const FUIDatasource* Datasource)
 {
@@ -273,9 +277,7 @@ void UUIDatasourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	if(!IsTemplate())
 	{
-		FSlateApplication::Get().OnPostTick().AddUObject(this, &UUIDatasourceSubsystem::Tick);
 		Instance = this;
-
 		Pool.Initialize();
 	}
 }
@@ -285,9 +287,9 @@ bool UUIDatasourceSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 	return true;
 }
 
-void UUIDatasourceSubsystem::Tick(float DeltaTime)
+#if WITH_DATASOURCE_DEBUG_IMGUI
+void UUIDatasourceSubsystem::DrawDebugUI()
 {
-#if 0
 	FString Name;
 	const auto RecItTree = [this, &Name](FUIDatasource* Current, auto Rec) -> void
 	{
@@ -312,7 +314,6 @@ void UUIDatasourceSubsystem::Tick(float DeltaTime)
 	};
 	if(ImGui::Begin("Datasource Debugger"))
 	{
-		// ImGui::SetNextWindowClass()
 		ImGui::Text("Datasource tree:");
 		RecItTree(Pool.GetRootDatasource(), RecItTree);
 
@@ -325,8 +326,8 @@ void UUIDatasourceSubsystem::Tick(float DeltaTime)
 		}
 	}
 	ImGui::End();
-#endif
 }
+#endif
 
 bool UUIDatasourceSubsystem::IsDesignerMockingEnabled() const
 {
