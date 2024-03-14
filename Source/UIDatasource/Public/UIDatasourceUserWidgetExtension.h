@@ -54,6 +54,9 @@ public:
 	UFUNCTION(BlueprintCallable, DisplayName="Set Datasource", meta=(DefaultToSelf=UserWidget))
 	static void SetUserWidgetDatasource(UUserWidget* UserWidget, FUIDatasourceHandle Handle);
 
+	UFUNCTION(BlueprintCallable, DisplayName="Get Datasource", meta=(DefaultToSelf=UserWidget))
+	static FUIDatasourceHandle GetUserWidgetDatasource(UUserWidget* UserWidget);
+
 	UFUNCTION(BlueprintCallable, meta=(DefaultToSelf=UserWidget))
 	static UUIDatasourceUserWidgetExtension* RegisterDatasourceExtension(UUserWidget* UserWidget);
 	

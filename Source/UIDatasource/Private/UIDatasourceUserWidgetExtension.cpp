@@ -129,6 +129,11 @@ void UUIDatasourceUserWidgetExtension::SetUserWidgetDatasource(UUserWidget* User
 	RegisterDatasourceExtension(UserWidget)->SetDatasource(Handle);
 }
 
+FUIDatasourceHandle UUIDatasourceUserWidgetExtension::GetUserWidgetDatasource(UUserWidget* UserWidget)
+{
+	return RegisterDatasourceExtension(UserWidget)->GetDatasource();
+}
+
 UUIDatasourceUserWidgetExtension* UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UUserWidget* UserWidget)
 {
 	UUIDatasourceUserWidgetExtension* Extension = UserWidget->GetExtension<UUIDatasourceUserWidgetExtension>();

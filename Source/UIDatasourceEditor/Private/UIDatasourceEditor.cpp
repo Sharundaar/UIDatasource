@@ -152,18 +152,17 @@ void SUIDatasourcePanel::UpdateContent()
 		]
 		+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Fill)
 		[
-			SNew(SScrollBox).Orientation(Orient_Vertical)
+			SNew(SScrollBox).Orientation(Orient_Vertical).Visibility_Lambda([this]()
+			{
+				if (UIDatasourceExtension.IsValid())
+				{
+					return EVisibility::Visible;
+				}
+				return EVisibility::Collapsed;
+			})
 			+ SScrollBox::Slot()
 			[
 				SNew(SVerticalBox)
-				.Visibility_Lambda([this]()
-				{
-					if (UIDatasourceExtension.IsValid())
-					{
-						return EVisibility::Visible;
-					}
-					return EVisibility::Collapsed;
-				})
 				+ SVerticalBox::Slot().AutoHeight()
 				[
 					DatasourceArchetypeDetailsView ? DatasourceArchetypeDetailsView.ToSharedRef() : SNullWidget::NullWidget
