@@ -5,7 +5,7 @@
 #include "UIDatasourceSubsystem.h"
 
 FUIDatasourceHandle::FUIDatasourceHandle(const FUIDatasource* Datasource)
-	: Id(UIDatasource_PackId(Datasource->Generation, Datasource->Id))
+	: Id(Datasource ? UIDatasource_PackId(Datasource->Generation, Datasource->Id) : 0)
 {
 }
 
