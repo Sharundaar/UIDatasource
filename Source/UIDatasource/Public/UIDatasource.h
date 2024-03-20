@@ -154,10 +154,10 @@ struct FUIDatasourceChangeEventArgs
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadOnly)
-	EUIDatasourceChangeEventKind Kind;
+	EUIDatasourceChangeEventKind Kind = EUIDatasourceChangeEventKind::InitialBind;
 
 	UPROPERTY(BlueprintReadOnly)
-	FUIDatasourceHandle Handle;
+	FUIDatasourceHandle Handle = {};
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDatasourceChangedDelegate, FUIDatasourceChangeEventArgs, EventArgs);

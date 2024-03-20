@@ -22,7 +22,7 @@
 		{
 			"Name": "UIDatasourceEditor",
 			"Type": "UncookedOnly",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		}
 	]
 }
