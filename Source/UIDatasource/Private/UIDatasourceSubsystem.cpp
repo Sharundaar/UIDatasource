@@ -98,44 +98,44 @@ FUIDatasource* FUIDatasourcePool::GetDatasourceById(EUIDatasourceId Id)
 	return Id != EUIDatasourceId::Invalid ? &Datasources[ToIndex(Id)] : nullptr;
 }
 
-FUIDatasource* FUIDatasourcePool::FindOrCreateDatasource(FUIDatasource* Parent, const FString& Path)
+template<typename CHARTYPE>
+static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, FUIDatasource* Parent, TStringView<CHARTYPE> Path)
 {
-	FStringView StrView = Path;
 	int32 DotPos;
 
 	FUIDatasource* Current = Parent; 
 	if(!Current)
 	{
-		Current = GetRootDatasource();
+		Current = Pool.GetRootDatasource();
 	}
 
-	while(!StrView.IsEmpty())
+	while(!Path.IsEmpty())
 	{
 		FName SearchName;
-		if(StrView.FindChar(TEXT('.'), DotPos))
+		if(Path.FindChar('.', DotPos))
 		{
-			SearchName = FName(FStringView(StrView.GetData(), DotPos), FNAME_Add);
-			StrView.RightChopInline(DotPos + 1);
+			SearchName = FName(TStringView<CHARTYPE>(Path.GetData(), DotPos), FNAME_Add);
+			Path.RightChopInline(DotPos + 1);
 		}
 		else
 		{
-			SearchName = FName(StrView, FNAME_Add);
-			StrView.Reset(); // Finished iterating
+			SearchName = FName(Path, FNAME_Add);
+			Path.Reset(); // Finished iterating
 		}
 
-		FUIDatasource* ChildIt = GetDatasourceById(Current->FirstChild);
+		FUIDatasource* ChildIt = Pool.GetDatasourceById(Current->FirstChild);
 		while(ChildIt && ChildIt->Name != SearchName)
 		{
-			ChildIt = GetDatasourceById(ChildIt->NextSibling);
+			ChildIt = Pool.GetDatasourceById(ChildIt->NextSibling);
 		}
 		
 		if(!ChildIt)
 		{
 			// @NOTE: Creates a new datasource and attach it to the chain
-			FUIDatasource* NewDatasource = Allocate();
+			FUIDatasource* NewDatasource = Pool.Allocate();
 			NewDatasource->Name = SearchName;
 			NewDatasource->Parent = Current->Id;
-			if(FUIDatasource* FirstChild = GetDatasourceById(Current->FirstChild))
+			if(FUIDatasource* FirstChild = Pool.GetDatasourceById(Current->FirstChild))
 			{
 				FirstChild->PrevSibling = NewDatasource->Id;
 			}
@@ -150,31 +150,29 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateDatasource(FUIDatasource* Parent, 
 	return Current;
 }
 
-FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, const FString& Path)
+template<typename CHARTYPE>
+static FUIDatasource* FindDatasource_Internal(const FUIDatasourcePool& Pool, const FUIDatasource* Parent, TStringView<CHARTYPE> Path)
 {
-	FStringView StrView = Path;
 	int32 DotPos;
 
-	// @NOTE: Remove const qualifier here so we can return non-const pointer
-	// We won't modify parent anywhere in this path so it's fine
-	FUIDatasource* Current = const_cast<FUIDatasource*>(Parent);
+	const FUIDatasource* Current = Parent;
 	if(!Current)
 	{
-		Current = GetRootDatasource();
+		Current = Pool.GetRootDatasource();
 	}
 
-	while(Current && !StrView.IsEmpty())
+	while(Current && !Path.IsEmpty())
 	{
 		FName SearchName = FName();
-		if(StrView.FindChar(TEXT('.'), DotPos))
+		if(Path.FindChar(TEXT('.'), DotPos))
 		{
-			SearchName = FName(FStringView(StrView.GetData(), DotPos), FNAME_Find);
-			StrView.RightChopInline(DotPos + 1);
+			SearchName = FName(TStringView<CHARTYPE>(Path.GetData(), DotPos), FNAME_Find);
+			Path.RightChopInline(DotPos + 1);
 		}
 		else
 		{
-			SearchName = FName(StrView, FNAME_Find);
-			StrView.Reset(); // Finished iterating
+			SearchName = FName(Path, FNAME_Find);
+			Path.Reset(); // Finished iterating
 		}
 
 		if(SearchName.IsNone())
@@ -182,17 +180,25 @@ FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, co
 			return nullptr; // FName has never been registered, as such it can't ID a datasource, so early bail out
 		}
 
-		FUIDatasource* ChildIt = GetDatasourceById(Current->FirstChild);
+		const FUIDatasource* ChildIt = Pool.GetDatasourceById(Current->FirstChild);
 		while(ChildIt && ChildIt->Name != SearchName)
 		{
-			ChildIt = GetDatasourceById(ChildIt->NextSibling);
+			ChildIt = Pool.GetDatasourceById(ChildIt->NextSibling);
 		}
 
 		Current = ChildIt;
 	}
 
-	return Current;
+	// @NOTE: const_cast here as the pool owns the datasource memory, but from a user
+	// perspective we'll want to modify the returned pointer anyways
+	return const_cast<FUIDatasource*>(Current);
 }
+
+
+FUIDatasource* FUIDatasourcePool::FindOrCreateDatasource(FUIDatasource* Parent, FWideStringView Path) { return FindOrCreateDatasource_Internal(*this, Parent, Path); }
+FUIDatasource* FUIDatasourcePool::FindOrCreateDatasource(FUIDatasource* Parent, FAnsiStringView Path) { return FindOrCreateDatasource_Internal(*this, Parent, Path); }
+FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, FWideStringView Path) const { return FindDatasource_Internal(*this, Parent, Path); }
+FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, FAnsiStringView Path) const { return FindDatasource_Internal(*this, Parent, Path); }
 
 FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Parent, FName Name)
 {

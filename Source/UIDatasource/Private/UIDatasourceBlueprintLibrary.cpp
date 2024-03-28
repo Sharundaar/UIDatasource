@@ -7,7 +7,7 @@
 
 FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateDatasource(FUIDatasourceHandle Parent, FString Path)
 {
-	return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(Parent.Get(), Path);
+	return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(Parent.Get(), *Path);
 }
 
 template<typename T>

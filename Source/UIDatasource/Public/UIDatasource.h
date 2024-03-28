@@ -183,8 +183,10 @@ struct UIDATASOURCE_API FUIDatasource
 
 	void OnValueChanged() const;
 
-	FUIDatasource* FindOrCreateFromPath(const FString& Path);
-	FUIDatasource* FindFromPath(const FString& Path) const;
+	FUIDatasource* FindOrCreateFromPath(FWideStringView Path);
+	FUIDatasource* FindOrCreateFromPath(FAnsiStringView Path);
+	FUIDatasource* FindFromPath(FWideStringView Path) const;
+	FUIDatasource* FindFromPath(FAnsiStringView Path) const;
 	
 	template<typename T>
 	bool Set(T InValue)
@@ -209,8 +211,10 @@ struct UIDATASOURCE_API FUIDatasource
 		return Value.TryGet<T>(OutValue);
 	}
 
-	FUIDatasource& operator[](const FString& Path);
-	FUIDatasource& operator[](const FString& Path) const;
+	FUIDatasource& operator[](FWideStringView Path);
+	FUIDatasource& operator[](FAnsiStringView Path);
+	FUIDatasource& operator[](FWideStringView Path) const;
+	FUIDatasource& operator[](FAnsiStringView Path) const;
 };
 static_assert(sizeof(FUIDatasourceHeader) <= sizeof(FUIDatasource), "We need to be able to fit a Header in the space of a normal Datasource.");
 

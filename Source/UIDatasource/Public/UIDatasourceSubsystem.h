@@ -28,8 +28,11 @@ public:
 	// Find a child datasource from Parent according to Path
 	// If Parent is empty, search from the root
 	// If Path is empty, returns parent (this makes it easier to fetch and bind to 'self' datasource)
-	FUIDatasource* FindOrCreateDatasource(FUIDatasource* Parent, const FString& Path);
-	FUIDatasource* FindDatasource(const FUIDatasource* Parent, const FString& Path);
+	FUIDatasource* FindOrCreateDatasource(FUIDatasource* Parent, FWideStringView Path);
+	FUIDatasource* FindOrCreateDatasource(FUIDatasource* Parent, FAnsiStringView Path);
+	FUIDatasource* FindDatasource(const FUIDatasource* Parent, FWideStringView Path) const;
+	FUIDatasource* FindDatasource(const FUIDatasource* Parent, FAnsiStringView Path) const;
+	
 	FUIDatasource* FindOrCreateChildDatasource(FUIDatasource* Parent, FName Name);
 	FUIDatasource* FindChildDatasource(FUIDatasource* Parent, FName Name);
 

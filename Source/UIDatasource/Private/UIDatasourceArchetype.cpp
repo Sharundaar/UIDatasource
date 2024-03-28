@@ -25,7 +25,7 @@ void UUIDatasourceArchetype::MockDatasource(FUIDatasource* Datasource) const
 		else
 		{
 			
-			FUIDatasource* ChildDatasource = Pool->FindOrCreateDatasource(Datasource, Descriptor.Path);
+			FUIDatasource* ChildDatasource = Pool->FindOrCreateDatasource(Datasource, *Descriptor.Path);
 			switch(Descriptor.Type)
 			{
 			case EUIDatasourceValueType::Void: break;
@@ -98,7 +98,7 @@ void UUIDatasourceArchetype::GenerateDatasource(FUIDatasource* Datasource) const
 		else
 		{
 			
-			FUIDatasource* ChildDatasource = Pool->FindOrCreateDatasource(Datasource, Descriptor.Path);
+			FUIDatasource* ChildDatasource = Pool->FindOrCreateDatasource(Datasource, *Descriptor.Path);
 			switch(Descriptor.Type)
 			{
 			case EUIDatasourceValueType::Void: break;
