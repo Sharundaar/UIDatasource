@@ -6,6 +6,8 @@
 #include "BlueprintModes/WidgetBlueprintApplicationMode.h"
 #include "Modules/ModuleManager.h"
 
+class SUIDatasourceDebugger;
+
 class FUIDatasourceEditorModule : public IModuleInterface
 {
 public:
@@ -13,4 +15,9 @@ public:
     virtual void ShutdownModule() override;
 
     static void HandleRegisterBlueprintEditorTab(const FWidgetBlueprintApplicationMode& WidgetBlueprintApplicationMode, FWorkflowAllowedTabSet& WorkflowAllowedTabs);
+    TSharedRef<SUIDatasourceDebugger> GetDatasourceDebugger(TSharedRef<SDockTab> InParentTab);
+    TSharedRef<SDockTab> SpawnDatasourceDebugger(const FSpawnTabArgs& SpawnTabArgs);
+
+protected:
+    TWeakPtr<SUIDatasourceDebugger> DatasourceDebuggerPtr;
 };

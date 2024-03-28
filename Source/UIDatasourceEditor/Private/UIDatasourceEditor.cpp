@@ -9,11 +9,14 @@
 #include "UIDatasourceSubsystem.h"
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "UMGEditorModule.h"
+#include "WorkspaceMenuStructure.h"
+#include "WorkspaceMenuStructureModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
 #include "Kismet2/BlueprintEditorUtils.h"
-#include "Widgets/Images/SLayeredImage.h"
+#include "Widgets/SUserWidget.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/Views/STreeView.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
 
@@ -22,6 +25,9 @@ namespace FUIDatasourceEditorModulePrivate
 	const static FName PropertyEditor("PropertyEditor");
 	const static FName AnimationTabSummonerTabID(TEXT("Animations"));
 }
+
+//////////////////////////////////////////////////////////////////
+/// SUIDatasourcePanel
 
 class SUIDatasourcePanel : public SCompoundWidget, public FNotifyHook
 {
@@ -512,15 +518,124 @@ protected:
 
 const FName FUIDatasourceSummoner::TabID = "UIDatasourcePanel";
 
+//////////////////////////////////////////////////////////////////
+/// SDatasourceDebugger
+
+// Represents a Datasource in the tree view
+struct FUIDatasourceNode
+{
+	FUIDatasourceHandle Handle;
+	TArray<TSharedPtr<FUIDatasourceNode>> Children;
+};
+using FUIDatasourceNodePtr = TSharedPtr<FUIDatasourceNode>;
+using SDebuggerTree = STreeView<FUIDatasourceNodePtr>;
+
+class SUIDatasourceDebugger
+	: public SCompoundWidget
+{
+public:
+	SLATE_USER_ARGS(SUIDatasourceDebugger)
+	{ }
+		SLATE_ARGUMENT(TSharedPtr<SDockTab>, ParentTab)
+	SLATE_END_ARGS()
+
+	TSharedRef<ITableRow> DebuggerTreeView_GenerateRow(FUIDatasourceNodePtr Datasource, const TSharedRef<STableViewBase>& TableViewBase);
+	void DebuggerTreeView_GetChildren(FUIDatasourceNodePtr InReflectorNode, TArray<FUIDatasourceNodePtr>& OutChildren);
+
+	virtual void Construct( const FArguments& InArgs );
+	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override;
+	TSharedPtr<SDebuggerTree> DebuggerTree;
+};
+SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebugger);
+
+TSharedRef<ITableRow> SUIDatasourceDebugger::DebuggerTreeView_GenerateRow(FUIDatasourceNodePtr InDatasource, const TSharedRef<STableViewBase>& InOwningTable)
+{
+	return SNew(STableRow<FUIDatasourceNodePtr>, InOwningTable)
+	[
+		SNew(STextBlock).Text(FText::FromName(InDatasource->Handle.Get()->Name))
+	];
+}
+
+void SUIDatasourceDebugger::DebuggerTreeView_GetChildren(FUIDatasourceNodePtr InNode, TArray<FUIDatasourceNodePtr>& OutChildren)
+{
+	OutChildren.Reset();
+
+	FUIDatasource* NodeDatasource = InNode->Handle.Get();
+	FUIDatasourcePool* Pool = NodeDatasource->GetPool();
+	for(FUIDatasource* Datasource = Pool->GetDatasourceById(NodeDatasource->FirstChild); Datasource; Datasource = Pool->GetDatasourceById(Datasource->NextSibling))
+	{
+		OutChildren.Add(MakeShared<FUIDatasourceNode>(FUIDatasourceNode{Datasource}));
+	}
+}
+
+void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
+{
+	static TArray<FUIDatasourceNodePtr> Items;
+	Items.Reset();
+	Items.Add(MakeShared<FUIDatasourceNode>(FUIDatasourceNode{ UUIDatasourceSubsystem::Get()->Pool.GetRootDatasource() }));
+
+	ChildSlot[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight() [
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot() [ SNew(STextBlock).Text(INVTEXT("Datasource Debugger")) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Generate Debug Data")).OnClicked_Lambda([this]()
+			{
+				FUIDatasourcePool& Pool = UUIDatasourceSubsystem::Get()->Pool;
+				FUIDatasource& Root = *Pool.GetRootDatasource();
+				Root["Player.Stats.Health"].Set<float>(100.0f);
+				Root["Player.Stats.MaxHealth"].Set<float>(100.0f);
+				Root["Player.Stats.Mana"].Set<float>(100.0f);
+				Root["Player.Stats.MaxMana"].Set<float>(100.0f);
+				Root["Player.IsAlive"].Set<bool>(true);
+				FUIDatasource& Inventory = Root["Inventory"];
+				Inventory["Items.0.Name"].Set<FText>(INVTEXT("Boots"));
+				Inventory["Items.0.Cost"].Set<int32>(16);
+				Inventory["Items.1.Name"].Set<FText>(INVTEXT("Goggles"));
+				Inventory["Items.1.Cost"].Set<int32>(500);
+				Inventory["Items.2.Name"].Set<FText>(INVTEXT("Sword"));
+				Inventory["Items.2.Cost"].Set<int32>(30);
+				Inventory["Items.Count"].Set<int32>(3);
+				DebuggerTree->RequestTreeRefresh();
+				return FReply::Handled();
+			}) ]
+		]
+		+ SVerticalBox::Slot() [ 
+			SAssignNew(DebuggerTree, SDebuggerTree)
+			.ItemHeight(24.0f)
+			.TreeItemsSource(&Items)
+			.OnGenerateRow(this, &SUIDatasourceDebugger::DebuggerTreeView_GenerateRow)
+			.OnGetChildren(this, &SUIDatasourceDebugger::DebuggerTreeView_GetChildren)
+		]
+	];
+}
+
+int32 SUIDatasourceDebugger::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
+	const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
+{
+	return SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+}
+
+
 void FUIDatasourceEditorModule::StartupModule()
 {
 	IUMGEditorModule& UMGEditorModule = FModuleManager::LoadModuleChecked<IUMGEditorModule>("UMGEditor");
 	UMGEditorModule.OnRegisterTabsForEditor().AddStatic(&FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab);
+
+	const IWorkspaceMenuStructure& MenuStructure = WorkspaceMenu::GetMenuStructure();
+	FTabSpawnerEntry& SpawnerEntry = FGlobalTabmanager::Get()->RegisterNomadTabSpawner("DatasourceDebugger", FOnSpawnTab::CreateRaw(this, &FUIDatasourceEditorModule::SpawnDatasourceDebugger) )
+				.SetDisplayName(LOCTEXT("DatasourceDebuggerTitle", "Datasource Debugger"))
+				.SetTooltipText(LOCTEXT("DatasourceDebuggerTooltipText", "Open the Datasource Debugger tab."))
+				.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Viewports"));
+	SpawnerEntry.SetGroup(MenuStructure.GetDeveloperToolsDebugCategory());
 }
 
 void FUIDatasourceEditorModule::ShutdownModule()
 {
-    
+    FGlobalTabmanager::Get()->UnregisterNomadTabSpawner("DatasourceDebugger");
 }
 
 void FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab(const FWidgetBlueprintApplicationMode& ApplicationMode, FWorkflowAllowedTabSet& TabFactories)
@@ -530,6 +645,27 @@ void FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab(const FWidgetBl
 	{
 		TabFactories.RegisterFactory(MakeShared<FUIDatasourceSummoner>(ApplicationMode.GetBlueprintEditor()));
 	}
+}
+
+TSharedRef<SUIDatasourceDebugger> FUIDatasourceEditorModule::GetDatasourceDebugger(TSharedRef<SDockTab> InParentTab)
+{
+	TSharedPtr<SUIDatasourceDebugger> DatasourceDebugger = DatasourceDebuggerPtr.Pin();
+
+	if(!DatasourceDebugger.IsValid())
+	{
+		DatasourceDebugger = SNew(SUIDatasourceDebugger).ParentTab(InParentTab);
+		DatasourceDebuggerPtr = DatasourceDebugger;
+	}
+
+	return DatasourceDebugger.ToSharedRef();
+}
+
+TSharedRef<SDockTab> FUIDatasourceEditorModule::SpawnDatasourceDebugger(const FSpawnTabArgs& SpawnTabArgs)
+{
+	TSharedRef<SDockTab> DatasourceDebuggerTab = SNew(SDockTab)
+			.TabRole(ETabRole::NomadTab);
+	DatasourceDebuggerTab->SetContent(GetDatasourceDebugger(DatasourceDebuggerTab));
+	return DatasourceDebuggerTab;
 }
 
 #undef LOCTEXT_NAMESPACE

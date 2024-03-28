@@ -28,7 +28,7 @@ public class UIDatasourceEditor : ModuleRules
                 "UnrealEd",
                 "GameplayTags",
                 "KismetCompiler",
-                "GraphEditor",
+                "GraphEditor", "WorkspaceMenuStructure",
             }
         );
     }
