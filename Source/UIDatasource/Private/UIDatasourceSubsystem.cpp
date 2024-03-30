@@ -2,6 +2,8 @@
 
 #include "UIDatasourceSubsystem.h"
 
+#include "..\Public\UIDatasourceMonitor.h"
+
 #if WITH_DATASOURCE_DEBUG_IMGUI
 #include "imgui.h"
 #endif
@@ -98,6 +100,22 @@ FUIDatasource* FUIDatasourcePool::GetDatasourceById(EUIDatasourceId Id)
 	return Id != EUIDatasourceId::Invalid ? &Datasources[ToIndex(Id)] : nullptr;
 }
 
+static FUIDatasource* AllocateAndAttachDatasource(FUIDatasourcePool& Pool, FUIDatasource* Parent, const FName& Name)
+{
+	// @NOTE: Creates a new datasource and attach it to the chain
+	FUIDatasource* NewDatasource = Pool.Allocate();
+	NewDatasource->Name = Name;
+	NewDatasource->Parent = Parent->Id;
+	if(FUIDatasource* FirstChild = Pool.GetDatasourceById(Parent->FirstChild))
+	{
+		FirstChild->PrevSibling = NewDatasource->Id;
+	}
+	NewDatasource->NextSibling = Parent->FirstChild;
+	Parent->FirstChild = NewDatasource->Id;
+	UUIDatasourceSubsystem::LogDatasourceChange({NewDatasource});
+	return NewDatasource;
+}
+
 template<typename CHARTYPE>
 static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, FUIDatasource* Parent, TStringView<CHARTYPE> Path)
 {
@@ -131,17 +149,7 @@ static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, F
 		
 		if(!ChildIt)
 		{
-			// @NOTE: Creates a new datasource and attach it to the chain
-			FUIDatasource* NewDatasource = Pool.Allocate();
-			NewDatasource->Name = SearchName;
-			NewDatasource->Parent = Current->Id;
-			if(FUIDatasource* FirstChild = Pool.GetDatasourceById(Current->FirstChild))
-			{
-				FirstChild->PrevSibling = NewDatasource->Id;
-			}
-			NewDatasource->NextSibling = Current->FirstChild;
-			Current->FirstChild = NewDatasource->Id;
-			ChildIt = NewDatasource;
+			ChildIt = AllocateAndAttachDatasource(Pool, Current, SearchName);
 		}
 
 		Current = ChildIt;
@@ -220,17 +228,7 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Par
 		
 	if(!ChildIt)
 	{
-		// @NOTE: Creates a new datasource and attach it to the chain
-		FUIDatasource* NewDatasource = Allocate();
-		NewDatasource->Name = Name;
-		NewDatasource->Parent = Parent->Id;
-		if(FUIDatasource* FirstChild = GetDatasourceById(Parent->FirstChild))
-		{
-			FirstChild->PrevSibling = NewDatasource->Id;
-		}
-		NewDatasource->NextSibling = Parent->FirstChild;
-		Parent->FirstChild = NewDatasource->Id;
-		ChildIt = NewDatasource;
+		ChildIt = AllocateAndAttachDatasource(*this, Parent, Name);
 	}
 
 	return ChildIt;
@@ -265,7 +263,8 @@ void FUIDatasourcePool::DestroyDatasource(FUIDatasource* Datasource)
 	{
 		DestroyDatasource(Child);
 	}
-	
+
+	UUIDatasourceSubsystem::LogDatasourceChange({Datasource});
 	Datasource->Id = EUIDatasourceId::Invalid;
 	Datasource->Generation++;
 }
@@ -274,6 +273,15 @@ UUIDatasourceSubsystem* UUIDatasourceSubsystem::Instance = nullptr;
 UUIDatasourceSubsystem* UUIDatasourceSubsystem::Get()
 {
 	return Instance;
+}
+
+void UUIDatasourceSubsystem::LogDatasourceChange(FUIDatasourceLogEntry Change)
+{
+#if WITH_UIDATASOURCE_MONITOR
+	Get()->Monitor.Logs.Add(Change);
+	// ReSharper disable once CppExpressionWithoutSideEffects
+	Get()->Monitor.OnMonitorEvent.Broadcast();
+#endif
 }
 
 void UUIDatasourceSubsystem::Deinitialize()
@@ -285,6 +293,7 @@ void UUIDatasourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	if(!IsTemplate())
 	{
+		checkf(!Instance, TEXT("An instance of UIDatasourceSubsystem was already registered."));
 		Instance = this;
 		Pool.Initialize();
 	}

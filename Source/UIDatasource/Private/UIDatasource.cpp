@@ -27,7 +27,8 @@ OPERATOR_IMPL(FAnsiStringView, FindFromPath, const);
 void FUIDatasource::OnValueChanged() const
 {
 	UIDATASOURCE_FUNC_TRACE()
-	
+
+	// UUIDatasourceSubsystem::Get()->Monitor.Log()
 	OnDatasourceChanged.Broadcast({
 		EUIDatasourceChangeEventKind::ValueSet,
 		this

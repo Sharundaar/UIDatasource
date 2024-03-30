@@ -23,3 +23,8 @@ struct UIDATASOURCE_API FUIDatasourceHandle
 
 	FUIDatasourcePackedId Id;
 };
+
+inline uint32 GetTypeHash(const FUIDatasourceHandle& Handle)
+{
+	return GetTypeHash(Handle.Id);
+}

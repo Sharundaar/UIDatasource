@@ -3,10 +3,12 @@
 #pragma once
 
 #include "UIDatasource.h"
+#include "UIDatasourceMonitor.h"
 
 #include "UIDatasourceSubsystem.generated.h"
 
 #define WITH_DATASOURCE_DEBUG_IMGUI 0
+#define WITH_UIDATASOURCE_MONITOR		1
 
 struct UIDATASOURCE_API FUIDatasourcePool
 {	
@@ -55,7 +57,8 @@ class UIDATASOURCE_API UUIDatasourceSubsystem : public UEngineSubsystem
 	
 public:
 	static UUIDatasourceSubsystem* Get();
-	
+	static void LogDatasourceChange(FUIDatasourceLogEntry Change);
+		
 public:
 	virtual void Deinitialize() override;
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -69,6 +72,9 @@ public:
 	void EnableDesignerMocking(bool bEnabled);
 
 	FUIDatasourcePool Pool;
+#if WITH_UIDATASOURCE_MONITOR
+	FUIDatasourceMonitor Monitor;
+#endif
 
 protected:
 	bool bIsDesignerMockingEnabled = false;
