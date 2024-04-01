@@ -13,18 +13,11 @@
 #include "WorkspaceMenuStructureModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
 #include "Kismet2/BlueprintEditorUtils.h"
-#include "Widgets/SUserWidget.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Views/STreeView.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
-
-namespace FUIDatasourceEditorModulePrivate
-{
-	const static FName PropertyEditor("PropertyEditor");
-	const static FName AnimationTabSummonerTabID(TEXT("Animations"));
-}
 
 //////////////////////////////////////////////////////////////////
 /// SUIDatasourcePanel
@@ -522,13 +515,14 @@ const FName FUIDatasourceSummoner::TabID = "UIDatasourcePanel";
 /// SDatasourceDebugger
 
 // Represents a Datasource in the tree view
-struct FUIDatasourceNode
-{
-	FUIDatasourceHandle Handle;
-	TArray<TSharedPtr<FUIDatasourceNode>> Children;
-};
+struct FUIDatasourceNode;
 using FUIDatasourceNodePtr = TSharedPtr<FUIDatasourceNode>;
 using SDebuggerTree = STreeView<FUIDatasourceNodePtr>;
+struct FUIDatasourceNode
+{
+	FUIDatasourceHandle Handle = {};
+	TSharedPtr<ITableRow> InstancedTable = nullptr; 
+};
 
 class SUIDatasourceDebugger
 	: public SCompoundWidget
@@ -544,40 +538,91 @@ public:
 
 	virtual void Construct( const FArguments& InArgs );
 	virtual ~SUIDatasourceDebugger() override;
-	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
-	                      FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle,
-	                      bool bParentEnabled) const override;
+	
 	TSharedPtr<SDebuggerTree> DebuggerTree;
 	FDelegateHandle MonitorEventHandle;
+	TMap<EUIDatasourceId, FUIDatasourceNodePtr> DebugTreeView_Nodes;
 };
 SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebugger);
 
+class SUIDatasourceDebuggerTreeViewItem : public SMultiColumnTableRow<FUIDatasourceNodePtr>
+{
+public:
+	static FName NAME_Name;
+	static FName NAME_Value;
+
+	SLATE_BEGIN_ARGS(SUIDatasourceDebuggerTreeViewItem)
+	{}
+		SLATE_ARGUMENT(FUIDatasourceNodePtr, DatasourceNode)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView);
+	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
+
+protected:
+	FUIDatasourceNodePtr Node;
+};
+SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebuggerTreeViewItem);
+
+FName SUIDatasourceDebuggerTreeViewItem::NAME_Name("Name");
+FName SUIDatasourceDebuggerTreeViewItem::NAME_Value("Value");
+
+void SUIDatasourceDebuggerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
+{
+	Node = InArgs._DatasourceNode;
+
+	SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(0.0f), InOwnerTableView);
+}
+
+TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(const FName& InColumnName)
+{
+	if(InColumnName == NAME_Name)
+	{
+		TSharedRef<SHorizontalBox> HorizontalBox = SNew(SHorizontalBox);
+		HorizontalBox->AddSlot()
+		.AutoWidth()
+		[
+			SNew(SExpanderArrow, SharedThis(this))
+			.IndentAmount(16)
+			.ShouldDrawWires(true)
+		];
+
+		HorizontalBox->AddSlot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromName(Node->Handle.Get()->Name))
+		];
+		return HorizontalBox;
+	}
+
+	if(InColumnName == NAME_Value)
+	{
+		return SNew(STextBlock).Text(UEnum::GetDisplayValueAsText(Node->Handle.Get()->Value.GetType()));
+	}
+
+	return SNullWidget::NullWidget;
+}
+
 TSharedRef<ITableRow> SUIDatasourceDebugger::DebuggerTreeView_GenerateRow(FUIDatasourceNodePtr InDatasource, const TSharedRef<STableViewBase>& InOwningTable)
 {
-	return SNew(STableRow<FUIDatasourceNodePtr>, InOwningTable)
-	[
-		SNew(STextBlock).Text(FText::FromName(InDatasource->Handle.Get()->Name))
-	];
+	return SAssignNew(InDatasource->InstancedTable, SUIDatasourceDebuggerTreeViewItem, InOwningTable).DatasourceNode(InDatasource);
 }
 
 void SUIDatasourceDebugger::DebuggerTreeView_GetChildren(FUIDatasourceNodePtr InNode, TArray<FUIDatasourceNodePtr>& OutChildren)
 {
-	static TMap<FUIDatasourceHandle, TSharedPtr<FUIDatasourceNode>> Nodes;
-	OutChildren.Reset();
-
 	FUIDatasource* NodeDatasource = InNode->Handle.Get();
 	FUIDatasourcePool* Pool = NodeDatasource->GetPool();
 	for(FUIDatasource* Datasource = Pool->GetDatasourceById(NodeDatasource->FirstChild); Datasource; Datasource = Pool->GetDatasourceById(Datasource->NextSibling))
 	{
 		FUIDatasourceNodePtr NodePtr;
-		if(auto Ptr = Nodes.Find(Datasource))
+		const FUIDatasourceNodePtr* Ptr = DebugTreeView_Nodes.Find(Datasource->Id);
+		if(!Ptr)
 		{
-			OutChildren.Add(*Ptr);
+			Ptr = &DebugTreeView_Nodes.Add(Datasource->Id, MakeShared<FUIDatasourceNode>(FUIDatasourceNode{}));
 		}
-		else
-		{
-			OutChildren.Add(Nodes.Add(Datasource, MakeShared<FUIDatasourceNode>(FUIDatasourceNode{Datasource})));
-		}
+		(*Ptr)->Handle = Datasource;
+		OutChildren.Add(*Ptr);
 	}
 }
 
@@ -587,11 +632,14 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 	Items.Reset();
 	Items.Add(MakeShared<FUIDatasourceNode>(FUIDatasourceNode{ UUIDatasourceSubsystem::Get()->Pool.GetRootDatasource() }));
 
+	DebugTreeView_Nodes.Reset();
+	DebugTreeView_Nodes.Add(EUIDatasourceId::Root, Items[0]);
+	
 	ChildSlot[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight() [
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot() [ SNew(STextBlock).Text(INVTEXT("Datasource Debugger")) ]
+			+ SHorizontalBox::Slot().VAlign(VAlign_Center) [ SNew(STextBlock).Text(INVTEXT("Datasource Debugger")) ]
 			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Generate Debug Data")).OnClicked_Lambda([this]()
 			{
 				FUIDatasourcePool& Pool = UUIDatasourceSubsystem::Get()->Pool;
@@ -609,7 +657,6 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				Inventory["Items.2.Name"].Set<FText>(INVTEXT("Sword"));
 				Inventory["Items.2.Cost"].Set<int32>(30);
 				Inventory["Items.Count"].Set<int32>(3);
-				// DebuggerTree->RequestTreeRefresh();
 				return FReply::Handled();
 			}) ]
 		]
@@ -619,6 +666,19 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 			.TreeItemsSource(&Items)
 			.OnGenerateRow(this, &SUIDatasourceDebugger::DebuggerTreeView_GenerateRow)
 			.OnGetChildren(this, &SUIDatasourceDebugger::DebuggerTreeView_GetChildren)
+			.HeaderRow(
+				SNew(SHeaderRow)
+				.CanSelectGeneratedColumn(true)
+
+				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_Name)
+				.DefaultLabel(INVTEXT("Datasource Name"))
+				.FillWidth(1.f)
+				.ShouldGenerateWidget(true)
+
+				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_Value)
+				.DefaultLabel(INVTEXT("Value"))
+				.ShouldGenerateWidget(true)
+			)
 		]
 	];
 
@@ -629,13 +689,6 @@ SUIDatasourceDebugger::~SUIDatasourceDebugger()
 {
 	UUIDatasourceSubsystem::Get()->Monitor.OnMonitorEvent.Remove(MonitorEventHandle);
 	MonitorEventHandle.Reset();
-}
-
-int32 SUIDatasourceDebugger::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
-                                     const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
-                                     const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
-{
-	return SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
 }
 
 

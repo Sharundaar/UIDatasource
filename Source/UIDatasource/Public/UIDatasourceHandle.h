@@ -21,7 +21,7 @@ struct UIDATASOURCE_API FUIDatasourceHandle
 	bool operator==(const FUIDatasourceHandle& Handle) const;
 	bool operator!=(const FUIDatasourceHandle& Handle) const;
 
-	FUIDatasourcePackedId Id;
+	FUIDatasourcePackedId Id = 0;
 };
 
 inline uint32 GetTypeHash(const FUIDatasourceHandle& Handle)
