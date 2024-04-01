@@ -13,6 +13,7 @@
 #include "WorkspaceMenuStructureModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Views/STreeView.h"
@@ -549,6 +550,7 @@ class SUIDatasourceDebuggerTreeViewItem : public SMultiColumnTableRow<FUIDatasou
 {
 public:
 	static FName NAME_Name;
+	static FName NAME_ValueType;
 	static FName NAME_Value;
 
 	SLATE_BEGIN_ARGS(SUIDatasourceDebuggerTreeViewItem)
@@ -565,6 +567,7 @@ protected:
 SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebuggerTreeViewItem);
 
 FName SUIDatasourceDebuggerTreeViewItem::NAME_Name("Name");
+FName SUIDatasourceDebuggerTreeViewItem::NAME_ValueType("ValueType");
 FName SUIDatasourceDebuggerTreeViewItem::NAME_Value("Value");
 
 void SUIDatasourceDebuggerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
@@ -596,11 +599,78 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 		return HorizontalBox;
 	}
 
-	if(InColumnName == NAME_Value)
+	if(InColumnName == NAME_ValueType)
 	{
-		return SNew(STextBlock).Text(UEnum::GetDisplayValueAsText(Node->Handle.Get()->Value.GetType()));
+		const EUIDatasourceValueType ValueType = Node->Handle.Get()->Value.GetType();
+		return ValueType == EUIDatasourceValueType::Void ? SNullWidget::NullWidget : SNew(STextBlock).Text(UEnum::GetDisplayValueAsText(Node->Handle.Get()->Value.GetType()));
 	}
 
+	if(InColumnName == NAME_Value)
+	{
+		FUIDatasource* Datasource = Node->Handle.Get();
+		switch(Datasource->Value.GetType())
+		{
+		case EUIDatasourceValueType::Void: return SNullWidget::NullWidget;
+		case EUIDatasourceValueType::Int:
+		case EUIDatasourceValueType::Enum:
+			return SNew(SNumericEntryBox<int32>).Value_Lambda([Datasource]()
+			{
+				int32 Value;
+				return Datasource->Value.TryGet<int32>(Value) ? Value : 0;
+			}).OnValueCommitted_Lambda([Datasource](int32 InValue, ETextCommit::Type InCommitType)
+			{
+				Datasource->Set(InValue);
+			});
+		case EUIDatasourceValueType::Float:
+			return SNew(SNumericEntryBox<float>).Value_Lambda([Datasource]()
+			{
+				float Value;
+				return Datasource->Value.TryGet<float>(Value) ? Value : 0.0f;
+			}).OnValueCommitted_Lambda([Datasource](float InValue, ETextCommit::Type InCommitType)
+			{
+				Datasource->Set(InValue);
+			});
+		case EUIDatasourceValueType::Bool:
+			return SNew(SCheckBox).IsChecked_Lambda([Datasource]()
+			{
+				bool Value;
+				return Datasource->Value.TryGet<bool>(Value) ? (Value ? ECheckBoxState::Checked : ECheckBoxState::Unchecked) : ECheckBoxState::Unchecked;
+			}).OnCheckStateChanged_Lambda([Datasource](ECheckBoxState State)
+			{
+				Datasource->Set(State == ECheckBoxState::Checked ? true : false);
+			});
+		case EUIDatasourceValueType::Name:
+			return SNew(SEditableTextBox).Text_Lambda([Datasource]()
+			{
+				FName Value;
+				return Datasource->Value.TryGet<FName>(Value) ? FText::FromString(Value.ToString()) : INVTEXT("None");
+			});
+		case EUIDatasourceValueType::Text:
+			return SNew(SEditableTextBox).Text_Lambda([Datasource]()
+			{
+				FText Value;
+				return Datasource->Value.TryGet<FText>(Value) ? Value : INVTEXT("None");
+			}).OnTextCommitted_Lambda([Datasource](const FText& Text, ETextCommit::Type CommitType)
+			{
+				Datasource->Set(Text);
+			});
+		case EUIDatasourceValueType::String:
+			return SNew(SEditableTextBox).Text_Lambda([Datasource]()
+			{
+				FString Value;
+				return Datasource->Value.TryGet<FString>(Value) ? FText::FromString(Value) : INVTEXT("");
+			});
+		case EUIDatasourceValueType::Image:
+			break;
+		case EUIDatasourceValueType::GameplayTag:
+			break;
+		case EUIDatasourceValueType::Archetype:
+			break;
+		default: ;
+		}
+		return SNullWidget::NullWidget;
+	}
+	
 	return SNullWidget::NullWidget;
 }
 
@@ -639,7 +709,6 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight() [
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().VAlign(VAlign_Center) [ SNew(STextBlock).Text(INVTEXT("Datasource Debugger")) ]
 			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Generate Debug Data")).OnClicked_Lambda([this]()
 			{
 				FUIDatasourcePool& Pool = UUIDatasourceSubsystem::Get()->Pool;
@@ -675,6 +744,11 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				.FillWidth(1.f)
 				.ShouldGenerateWidget(true)
 
+				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_ValueType)
+				.DefaultLabel(INVTEXT("Type"))
+				.ShouldGenerateWidget(true)
+				.FillSized(60)
+				
 				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_Value)
 				.DefaultLabel(INVTEXT("Value"))
 				.ShouldGenerateWidget(true)
