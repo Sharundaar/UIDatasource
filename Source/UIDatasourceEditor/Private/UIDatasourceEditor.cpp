@@ -3,6 +3,7 @@
 #include "UIDatasourceEditor.h"
 
 #include "GraphEditAction.h"
+#include "ILiveCodingModule.h"
 #include "K2Node_UIDatasourceSingleBinding.h"
 #include "PropertyEditorModule.h"
 #include "UIDatasourceArchetype.h"
@@ -13,12 +14,67 @@
 #include "WorkspaceMenuStructureModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Styling/SlateStyleMacros.h"
+#include "Styling/SlateStyleRegistry.h"
 #include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/Views/STreeView.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
+
+
+//////////////////////////////////////////////////////////////////
+/// SCollapsibleHeader
+
+class SCollapsibleHeader : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SCollapsibleHeader) {}
+		SLATE_DEFAULT_SLOT( FArguments, Content )
+		SLATE_ARGUMENT(FText, Text)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs);
+	bool bIsExpanded = false;
+};
+
+void SCollapsibleHeader::Construct(const FArguments& InArgs)
+{
+	ChildSlot
+	[
+		SNew(SVerticalBox)
+		+SVerticalBox::Slot().AutoHeight() [
+			SNew(SButton)
+			.ButtonStyle(FUIDatasourceStyle::Get(), "CollapsibleButton")
+			.ContentPadding(FMargin{4.0})
+			.OnClicked_Lambda([this]() { bIsExpanded = !bIsExpanded; return FReply::Handled(); })
+			[
+				SNew(SHorizontalBox)
+				+SHorizontalBox::Slot().VAlign(VAlign_Center).AutoWidth()
+				[
+					SNew(SImage).Image_Lambda([this]()
+					{
+						return bIsExpanded ? FAppStyle::GetBrush("TreeArrow_Expanded") : FAppStyle::GetBrush("TreeArrow_Collapsed");
+					})
+				]
+				+SHorizontalBox::Slot().VAlign(VAlign_Center).AutoWidth()
+				[
+					SNew(STextBlock).Text(InArgs._Text)
+				]
+			]
+		]
+
+		+SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SBox).Visibility_Lambda([this]() { return bIsExpanded ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed; })
+			[
+				InArgs._Content.Widget
+			]
+		]
+	];
+}
 
 //////////////////////////////////////////////////////////////////
 /// SUIDatasourcePanel
@@ -543,6 +599,7 @@ public:
 	TSharedPtr<SDebuggerTree> DebuggerTree;
 	FDelegateHandle MonitorEventHandle;
 	TMap<EUIDatasourceId, FUIDatasourceNodePtr> DebugTreeView_Nodes;
+	bool bStatBoxOpened;
 };
 SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebugger);
 
@@ -659,6 +716,9 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 			{
 				FString Value;
 				return Datasource->Value.TryGet<FString>(Value) ? FText::FromString(Value) : INVTEXT("");
+			}).OnTextCommitted_Lambda([Datasource](const FText& Text, ETextCommit::Type CommitType)
+			{
+				Datasource->Set(Text.ToString());
 			});
 		case EUIDatasourceValueType::Image:
 			break;
@@ -704,11 +764,8 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 
 	DebugTreeView_Nodes.Reset();
 	DebugTreeView_Nodes.Add(EUIDatasourceId::Root, Items[0]);
-	
-	ChildSlot[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight() [
-			SNew(SHorizontalBox)
+
+	auto DebugButton = SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Generate Debug Data")).OnClicked_Lambda([this]()
 			{
 				FUIDatasourcePool& Pool = UUIDatasourceSubsystem::Get()->Pool;
@@ -727,7 +784,26 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				Inventory["Items.2.Cost"].Set<int32>(30);
 				Inventory["Items.Count"].Set<int32>(3);
 				return FReply::Handled();
-			}) ]
+			}) ];
+
+	bStatBoxOpened = false;
+	ChildSlot[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight() [
+			SNew(SCollapsibleHeader)
+			.Text(INVTEXT("Stats"))
+			[
+				SNew(STextBlock)
+					.Text(FText::FormatOrdered(INVTEXT(" - sizeof(FUIDatasource): {0}\t\t - sizeof(FUIDatasourceHandle): {1}\n - sizeof(FUIDatasourcePool): {2}\t\t - sizeof(FUIDatasourceValue): {3}"), sizeof(FUIDatasource), sizeof(FUIDatasourceHandle), sizeof(FUIDatasourcePool), sizeof(FUIDatasourceValue)))
+					.TextStyle(FUIDatasourceStyle::Get(), "Normal")
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight() [
+			SNew(SCollapsibleHeader)
+			.Text(INVTEXT("Debug"))
+			[
+				DebugButton
+			]
 		]
 		+ SVerticalBox::Slot() [ 
 			SAssignNew(DebuggerTree, SDebuggerTree)
@@ -766,22 +842,96 @@ SUIDatasourceDebugger::~SUIDatasourceDebugger()
 }
 
 
+FUIDatasourceStyle& FUIDatasourceStyle::Get()
+{
+	static FUIDatasourceStyle Inst;
+	return Inst;
+}
+
+FName FUIDatasourceStyle::StyleName = "UIDatasourceStyle";
+
+FUIDatasourceStyle::FUIDatasourceStyle()
+	: FSlateStyleSet(StyleName)
+{
+#define COLOR(Str) FLinearColor::FromSRGBColor(FColor::FromHex(Str)) 
+
+	FButtonStyle CollapsibleButton = FButtonStyle()
+		.SetNormal(FSlateColorBrush(COLOR("2B2B2B")))
+		.SetHovered(FSlateColorBrush(COLOR("414141")))
+		.SetPressed(FSlateColorBrush(COLOR("#414141")));
+	Set("CollapsibleButton", CollapsibleButton);
+
+	FTextBlockStyle NormalTextStyle = FTextBlockStyle()
+		.SetFont(DEFAULT_FONT("Regular", 12))
+		.SetColorAndOpacity(FSlateColor(COLOR("FFFFFF")));
+	Set("Normal", NormalTextStyle);
+	
+#undef COLOR
+	
+	FSlateStyleRegistry::RegisterSlateStyle(*this);
+}
+
+FUIDatasourceStyle::~FUIDatasourceStyle()
+{
+	FSlateStyleRegistry::UnRegisterSlateStyle(*this);
+}
+
+void FUIDatasourceEditorModule::OnPatchComplete()
+{
+	if(auto Debugger = DatasourceDebuggerPtr.Pin())
+	{
+		StaticCastSharedPtr<SDockTab>(Debugger->GetParentWidget())->RequestCloseTab();
+		FSpawnTabArgs Args(nullptr, FTabId());
+		SpawnDatasourceDebugger(Args);
+	}
+}
+
 void FUIDatasourceEditorModule::StartupModule()
 {
 	IUMGEditorModule& UMGEditorModule = FModuleManager::LoadModuleChecked<IUMGEditorModule>("UMGEditor");
-	UMGEditorModule.OnRegisterTabsForEditor().AddStatic(&FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab);
+	auto RegisterBlueprintEditorTabDelegate = UMGEditorModule.OnRegisterTabsForEditor().AddStatic(&FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab);
+	DeferOnShutdown([RegisterBlueprintEditorTabDelegate]()
+	{
+		IUMGEditorModule& UMGEditorModule = FModuleManager::LoadModuleChecked<IUMGEditorModule>("UMGEditor");
+		UMGEditorModule.OnRegisterTabsForEditor().Remove(RegisterBlueprintEditorTabDelegate);
+	});
 
 	const IWorkspaceMenuStructure& MenuStructure = WorkspaceMenu::GetMenuStructure();
-	FTabSpawnerEntry& SpawnerEntry = FGlobalTabmanager::Get()->RegisterNomadTabSpawner("DatasourceDebugger", FOnSpawnTab::CreateRaw(this, &FUIDatasourceEditorModule::SpawnDatasourceDebugger) )
+	FName DatasourceTabId = "DatasourceDebugger";
+	FTabSpawnerEntry& SpawnerEntry = FGlobalTabmanager::Get()->RegisterNomadTabSpawner(DatasourceTabId, FOnSpawnTab::CreateRaw(this, &FUIDatasourceEditorModule::SpawnDatasourceDebugger) )
 				.SetDisplayName(LOCTEXT("DatasourceDebuggerTitle", "Datasource Debugger"))
 				.SetTooltipText(LOCTEXT("DatasourceDebuggerTooltipText", "Open the Datasource Debugger tab."))
 				.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Viewports"));
 	SpawnerEntry.SetGroup(MenuStructure.GetDeveloperToolsDebugCategory());
+	DeferOnShutdown([DatasourceTabId]()
+	{
+		FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(DatasourceTabId);
+	});
+
+#if WITH_LIVE_CODING
+	if (ILiveCodingModule* LiveCoding = FModuleManager::LoadModulePtr<ILiveCodingModule>(LIVE_CODING_MODULE_NAME))
+	{
+		auto OnPatchCompleteHandle = LiveCoding->GetOnPatchCompleteDelegate().AddRaw(this, &FUIDatasourceEditorModule::OnPatchComplete);
+		DeferOnShutdown([OnPatchCompleteHandle]()
+		{
+			ILiveCodingModule* LiveCoding = FModuleManager::LoadModulePtr<ILiveCodingModule>(LIVE_CODING_MODULE_NAME);
+			LiveCoding->GetOnPatchCompleteDelegate().Remove(OnPatchCompleteHandle);
+		});
+	}
+#endif
+}
+
+void FUIDatasourceEditorModule::DeferOnShutdown(TFunction<void()> Callback)
+{
+	OnShutdownCallbacks.Add(Callback);
 }
 
 void FUIDatasourceEditorModule::ShutdownModule()
 {
-    FGlobalTabmanager::Get()->UnregisterNomadTabSpawner("DatasourceDebugger");
+	for(auto Callback : OnShutdownCallbacks)
+	{
+		Callback();
+	}
 }
 
 void FUIDatasourceEditorModule::HandleRegisterBlueprintEditorTab(const FWidgetBlueprintApplicationMode& ApplicationMode, FWorkflowAllowedTabSet& TabFactories)
