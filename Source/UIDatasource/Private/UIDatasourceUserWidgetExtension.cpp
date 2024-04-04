@@ -93,9 +93,9 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::PreConstruct(UUserWidg
 		UUIDatasourceArchetype* Archetype = NewObject<UUIDatasourceArchetype>(this, UUIDatasourceArchetype::StaticClass(), "MockArchetype", RF_Transient);
 
 		TArray<FUIDatasourceDescriptor> Descriptors;
-		for(auto& C: Bindings)
+		for(FUIDataBindTemplate& Binding : Bindings)
 		{
-			Descriptors.Add(C.Descriptor);
+			Descriptors.Add(Binding.Descriptor);
 		}
 		Archetype->SetChildren(Descriptors);
 		Archetype->MockDatasource(MockDatasource);

@@ -22,6 +22,7 @@ public class UIDatasourceEditor : ModuleRules
                 "Engine",
                 "Slate",
                 "SlateCore",
+                "UMG",
                 "Kismet",
                 "InputCore",
                 "BlueprintGraph",
