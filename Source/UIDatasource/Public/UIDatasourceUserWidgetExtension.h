@@ -26,10 +26,10 @@ public:
 	virtual void NativeOnDatasourceChanging(FUIDatasourceHandle Handle);
 	virtual void NativeOnDatasourceChanged(FUIDatasourceHandle Handle);
 
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, DisplayName="Pre Datasource Change")
 	void BP_OnDatasourceChanging(FUIDatasourceHandle Handle);
 	
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, DisplayName="Post Datasource Change")
 	void BP_OnDatasourceChanged(FUIDatasourceHandle Handle);
 };
 
@@ -54,7 +54,7 @@ public:
 	UFUNCTION(BlueprintCallable, DisplayName="Set Datasource", meta=(DefaultToSelf=UserWidget))
 	static void SetUserWidgetDatasource(UUserWidget* UserWidget, FUIDatasourceHandle Handle);
 
-	UFUNCTION(BlueprintCallable, DisplayName="Get Datasource", meta=(DefaultToSelf=UserWidget))
+	UFUNCTION(BlueprintPure, DisplayName="Get Datasource", meta=(DefaultToSelf=UserWidget))
 	static FUIDatasourceHandle GetUserWidgetDatasource(UUserWidget* UserWidget);
 
 	UFUNCTION(BlueprintCallable, meta=(DefaultToSelf=UserWidget))
