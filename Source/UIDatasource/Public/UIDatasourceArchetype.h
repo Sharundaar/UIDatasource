@@ -28,7 +28,7 @@ struct FUIDatasourceDescriptor
 	UPROPERTY(EditAnywhere)
 	EUIDatasourceValueType Type = EUIDatasourceValueType::Void;
 
-	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Enum"))
+	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Enum", GetOptions="UIDatasource.UIDatasourceArchetype.GetEnumChoices"))
 	FString EnumPath = "";
 
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Archetype"))
@@ -61,6 +61,9 @@ public:
 	const TArray<FUIDatasourceDescriptor>& GetDescriptors() const; 
 
 	void SetChildren(const TArray<FUIDatasourceDescriptor>& Descriptors);
+
+	UFUNCTION()
+	static TArray<FString> GetEnumChoices();
 	
 protected:
 	UPROPERTY(EditAnywhere)

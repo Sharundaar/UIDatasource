@@ -17,6 +17,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category=UIDatasource)
 	static FUIDatasourceHandle FindOrCreateDatasource(FUIDatasourceHandle Parent, FString Path);
 
+	UFUNCTION(BlueprintPure, Category=UIDatasource, meta=(CompactNodeTitle="VALID"))
+	static bool IsValid(FUIDatasourceHandle Handle);
+
+	UFUNCTION(BlueprintPure, Category=UIDatasource, DisplayName="Equal (Datasource)", meta=(CompactNodeTitle="==", Keywords="== equal"))
+	static bool EqualEqual_DatasourceHandle(FUIDatasourceHandle HandleA, FUIDatasourceHandle HandleB);
+
 	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Is Array")
 	static bool ArrayDatasource_IsArray(FUIDatasourceHandle ArrayHandle);
 	

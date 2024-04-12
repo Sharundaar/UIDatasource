@@ -10,6 +10,16 @@ FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateDatasource(FUIDat
 	return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(Parent.Get(), *Path);
 }
 
+bool UUIDatasourceBlueprintLibrary::IsValid(FUIDatasourceHandle Handle)
+{
+	return Handle.IsValid();
+}
+
+bool UUIDatasourceBlueprintLibrary::EqualEqual_DatasourceHandle(FUIDatasourceHandle HandleA, FUIDatasourceHandle HandleB)
+{
+	return HandleA == HandleB;
+}
+
 bool UUIDatasourceBlueprintLibrary::ArrayDatasource_IsArray(FUIDatasourceHandle ArrayHandle)
 {
 	return FUIArrayDatasource::Cast(ArrayHandle.Get()) != nullptr;

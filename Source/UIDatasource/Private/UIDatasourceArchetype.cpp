@@ -3,6 +3,7 @@
 #include "UIDatasourceArchetype.h"
 
 #include "UIDatasourceSubsystem.h"
+#include "UObject/UObjectIterator.h"
 
 TArray<FName> UUIDatasourceArchetype::MockNameSource = { "Name1", "Name2", "Name3" };
 TArray<FString> UUIDatasourceArchetype::MockStringSource = { TEXT("String1"), TEXT("String2"), TEXT("String3") };
@@ -168,4 +169,16 @@ const TArray<FUIDatasourceDescriptor>& UUIDatasourceArchetype::GetDescriptors() 
 void UUIDatasourceArchetype::SetChildren(const TArray<FUIDatasourceDescriptor>& Descriptors)
 {
 	Children = Descriptors;
+}
+
+TArray<FString> UUIDatasourceArchetype::GetEnumChoices()
+{
+	TArray<FString> EnumPaths = {};
+
+	for(TObjectIterator<UEnum> EnumIt; EnumIt; ++EnumIt)
+	{
+		EnumPaths.Add(EnumIt->GetPathName());
+	}
+	
+	return EnumPaths;
 }
