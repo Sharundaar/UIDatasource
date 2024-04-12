@@ -26,10 +26,9 @@ FUIDatasource* FUIDatasourcePool::Allocate()
 {
 	UIDATASOURCE_FUNC_TRACE();
 
-	checkf(FirstFree < Datasources.Num(), TEXT("No more room to allocate new datasource, consider cleaning unused Datasource or increase pool size."));
-	if (FirstFree >= Datasources.Num())
+	if (!ensureMsgf(FirstFree < Datasources.Num(), TEXT("No more room to allocate new datasource, consider cleaning unused Datasource or increase pool size.")))
 	{
-		UE_LOG(LogDatasource, Fatal, TEXT("No more room to allocate new datasource, consider cleaning unused Datasource or increase pool size."));
+		UE_LOG(LogDatasource, Error, TEXT("No more room to allocate new datasource, consider cleaning unused Datasource or increase pool size."));
 		return nullptr;
 	}
 
@@ -56,6 +55,8 @@ void FUIDatasourcePool::Clear()
 
 void FUIDatasourcePool::Initialize()
 {
+	UIDATASOURCE_FUNC_TRACE();
+	
 	Datasources.SetNumZeroed(ChunkSize);
 	
 	FUIDatasourceHeader* Header = reinterpret_cast<FUIDatasourceHeader*>(&Datasources[static_cast<int>(EUIDatasourceId::Header)]);
@@ -102,8 +103,15 @@ FUIDatasource* FUIDatasourcePool::GetDatasourceById(EUIDatasourceId Id)
 
 static FUIDatasource* AllocateAndAttachDatasource(FUIDatasourcePool& Pool, FUIDatasource* Parent, const FName& Name)
 {
+	UIDATASOURCE_FUNC_TRACE();
+	
 	// @NOTE: Creates a new datasource and attach it to the chain
 	FUIDatasource* NewDatasource = Pool.Allocate();
+	if (!NewDatasource)
+	{
+		return NewDatasource;
+	}
+	
 	NewDatasource->Name = Name;
 	NewDatasource->Parent = Parent->Id;
 	if(FUIDatasource* FirstChild = Pool.GetDatasourceById(Parent->FirstChild))
@@ -119,6 +127,8 @@ static FUIDatasource* AllocateAndAttachDatasource(FUIDatasourcePool& Pool, FUIDa
 template<typename CHARTYPE>
 static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, FUIDatasource* Parent, TStringView<CHARTYPE> Path)
 {
+	UIDATASOURCE_TRACE("FindOrCreateDatasource");
+	
 	int32 DotPos;
 
 	FUIDatasource* Current = Parent; 
@@ -161,6 +171,7 @@ static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, F
 template<typename CHARTYPE>
 static FUIDatasource* FindDatasource_Internal(const FUIDatasourcePool& Pool, const FUIDatasource* Parent, TStringView<CHARTYPE> Path)
 {
+	UIDATASOURCE_TRACE("FindDatasource");
 	int32 DotPos;
 
 	const FUIDatasource* Current = Parent;
@@ -210,6 +221,8 @@ FUIDatasource* FUIDatasourcePool::FindDatasource(const FUIDatasource* Parent, FA
 
 FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Parent, FName Name)
 {
+	UIDATASOURCE_FUNC_TRACE();
+	
 	if(Name.IsNone())
 	{
 		return nullptr;
@@ -236,6 +249,8 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Par
 
 FUIDatasource* FUIDatasourcePool::FindChildDatasource(FUIDatasource* Parent, FName Name)
 {
+	UIDATASOURCE_FUNC_TRACE();
+	
 	if(Name.IsNone())
     {
     	return nullptr;
@@ -257,9 +272,11 @@ FUIDatasource* FUIDatasourcePool::FindChildDatasource(FUIDatasource* Parent, FNa
 
 void FUIDatasourcePool::DestroyDatasource(FUIDatasource* Datasource)
 {
+	UIDATASOURCE_FUNC_TRACE();
+	
 	FirstFree = FMath::Min(FirstFree, static_cast<int>(Datasource->Id));
 
-	for(FUIDatasource* Child = GetDatasourceById(Datasource->FirstChild); Child; Child = GetDatasourceById(Datasource->NextSibling))
+	for(FUIDatasource* Child = GetDatasourceById(Datasource->FirstChild); Child; Child = GetDatasourceById(Child->NextSibling))
 	{
 		DestroyDatasource(Child);
 	}

@@ -658,8 +658,12 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 
 	if(InColumnName == NAME_ValueType)
 	{
-		const EUIDatasourceValueType ValueType = Node->Handle.Get()->Value.GetType();
-		return ValueType == EUIDatasourceValueType::Void ? SNullWidget::NullWidget : SNew(STextBlock).Text(UEnum::GetDisplayValueAsText(Node->Handle.Get()->Value.GetType()));
+		FUIDatasource* Datasource = Node->Handle.Get();
+		const EUIDatasourceValueType ValueType = Datasource->Value.GetType();
+		return ValueType == EUIDatasourceValueType::Void
+		? SNullWidget::NullWidget
+		: SNew(STextBlock)
+			.Text(FUIArrayDatasource::IsArray(Datasource) ? INVTEXT("Array") : UEnum::GetDisplayValueAsText(ValueType));
 	}
 
 	if(InColumnName == NAME_Value)
@@ -776,13 +780,54 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				Root["Player.Stats.MaxMana"].Set<float>(100.0f);
 				Root["Player.IsAlive"].Set<bool>(true);
 				FUIDatasource& Inventory = Root["Inventory"];
-				Inventory["Items.0.Name"].Set<FText>(INVTEXT("Boots"));
-				Inventory["Items.0.Cost"].Set<int32>(16);
-				Inventory["Items.1.Name"].Set<FText>(INVTEXT("Goggles"));
-				Inventory["Items.1.Cost"].Set<int32>(500);
-				Inventory["Items.2.Name"].Set<FText>(INVTEXT("Sword"));
-				Inventory["Items.2.Cost"].Set<int32>(30);
-				Inventory["Items.Count"].Set<int32>(3);
+				FUIArrayDatasource& InventoryItems = FUIArrayDatasource::Make(Inventory["Items"]);
+
+				{
+					FUIDatasource& Item = *InventoryItems.Append();
+					Item["Name"].Set<FText>(INVTEXT("Boots"));
+					Item["Cost"].Set<int32>(16);
+				}
+				{
+					FUIDatasource& Item = *InventoryItems.Append();
+					Item["Name"].Set<FText>(INVTEXT("Goggles"));
+					Item["Cost"].Set<int32>(500);
+				}
+				{
+					FUIDatasource& Item = *InventoryItems.Append();
+					Item["Name"].Set<FText>(INVTEXT("Sword"));
+					Item["Cost"].Set<int32>(30);
+				}
+				return FReply::Handled();
+			}) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Stress Test")).OnClicked_Lambda([this]()
+			{
+				TRACE_BOOKMARK(L"UIDatasource Stress Test")
+				auto MakeNode = [](FUIDatasource* Node, int Depth, auto&& Rec)
+				{
+					if(!Node) return;
+					if(Depth == 5) return;
+					char Buff[] = "Item0";
+					for(int i=0; i<8; ++i)
+					{
+						Buff[4] = '0' + i;
+						Rec(Node->FindOrCreateFromPath(Buff), Depth+1, Rec);
+					}
+				};
+				FUIDatasource* RootDatasource = UUIDatasourceSubsystem::Get()->Pool.GetRootDatasource();
+				MakeNode(RootDatasource, 0, MakeNode);
+
+				char Buff[] = "Item0.Item0.Item0.Item0.Item0";
+				for(int32 Rep=0; Rep<10000; ++Rep)
+				{
+					for(int i=0; i<5; ++i)
+					{
+						int Rnd = FMath::RandHelper(8);
+						Buff[4 + i * 6] = '0' + Rnd;
+					}
+					auto DS = RootDatasource->FindFromPath(Buff);
+					DS->Set<int32>(Rep); 
+				}
+				
 				return FReply::Handled();
 			}) ];
 
@@ -793,17 +838,27 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 			SNew(SCollapsibleHeader)
 			.Text(INVTEXT("Stats"))
 			[
-				SNew(STextBlock)
-					.Text(FText::FormatOrdered(INVTEXT(" - sizeof(FUIDatasource): {0}\t\t - sizeof(FUIDatasourceHandle): {1}\n - sizeof(FUIDatasourcePool): {2}\t\t - sizeof(FUIDatasourceValue): {3}"), sizeof(FUIDatasource), sizeof(FUIDatasourceHandle), sizeof(FUIDatasourcePool), sizeof(FUIDatasourceValue)))
-					.TextStyle(FUIDatasourceStyle::Get(), "Normal")
+				SNew(SVerticalBox)
+				+SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+						.Text(FText::FormatOrdered(INVTEXT(" - sizeof(FUIDatasource): {0}\t\t - sizeof(FUIDatasourceHandle): {1}\n - sizeof(FUIDatasourcePool): {2}\t\t - sizeof(FUIDatasourceValue): {3}\n - sizeof(Pool): {4}"), sizeof(FUIDatasource), sizeof(FUIDatasourceHandle), sizeof(FUIDatasourcePool), sizeof(FUIDatasourceValue), sizeof(FUIDatasource) * FUIDatasourcePool::Capacity()))
+						.TextStyle(FUIDatasourceStyle::Get(), "Normal")
+				]
+				+SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+						.Text_Lambda([]()
+						{
+							return FText::FormatOrdered(INVTEXT("DatasourcePool (Used/Total): {0}/{1}"), UUIDatasourceSubsystem::Get()->Pool.Num(), FUIDatasourcePool::Capacity());
+						})
+						.TextStyle(FUIDatasourceStyle::Get(), "Normal")
+				]
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight() [
 			SNew(SCollapsibleHeader)
-			.Text(INVTEXT("Debug"))
-			[
-				DebugButton
-			]
+			.Text(INVTEXT("Debug")) [ DebugButton ]
 		]
 		+ SVerticalBox::Slot() [ 
 			SAssignNew(DebuggerTree, SDebuggerTree)
@@ -823,7 +878,6 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_ValueType)
 				.DefaultLabel(INVTEXT("Type"))
 				.ShouldGenerateWidget(true)
-				.FillSized(60)
 				
 				+SHeaderRow::Column(SUIDatasourceDebuggerTreeViewItem::NAME_Value)
 				.DefaultLabel(INVTEXT("Value"))

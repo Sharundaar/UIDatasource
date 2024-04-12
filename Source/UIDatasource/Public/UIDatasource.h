@@ -99,7 +99,7 @@ struct FUIDatasourceValue
 	}
 
 	template<typename T>
-	T Get()
+	T Get() const
 	{
 		UIDATASOURCE_FUNC_TRACE()
 
@@ -115,7 +115,7 @@ struct FUIDatasourceValue
 	}
 	
 	template<typename T>
-	bool TryGet(T& OutValue)
+	bool TryGet(T& OutValue) const
 	{
 		UIDATASOURCE_FUNC_TRACE()
 
@@ -136,8 +136,9 @@ struct FUIDatasourceHeader
 
 enum class EUIDatasourceFlag : uint8
 {
-	None = 0,
+	None      = 0,
 	IsInvalid = 1 << 0,
+	IsArray   = 1 << 1,
 };
 ENUM_CLASS_FLAGS(EUIDatasourceFlag)
 
@@ -200,13 +201,13 @@ struct UIDATASOURCE_API FUIDatasource
 	}
 
 	template<typename T>
-	T Get()
+	T Get() const
 	{
 		return Value.Get<T>();
 	}
 
 	template<typename T>
-	bool TryGet(T& OutValue)
+	bool TryGet(T& OutValue) const
 	{
 		return Value.TryGet<T>(OutValue);
 	}
@@ -218,3 +219,19 @@ struct UIDATASOURCE_API FUIDatasource
 };
 static_assert(sizeof(FUIDatasourceHeader) <= sizeof(FUIDatasource), "We need to be able to fit a Header in the space of a normal Datasource.");
 
+struct UIDATASOURCE_API FUIArrayDatasource : FUIDatasource
+{
+	FUIArrayDatasource() = delete;
+	
+	int32 GetNum() const { return Get<int32>(); }
+	FUIDatasource* Append();
+	void Empty(bool bDestroyChildren = false);
+
+	static       bool                IsArray(const FUIDatasource* Datasource) { return EnumHasAllFlags(Datasource->Flags, EUIDatasourceFlag::IsArray); }
+	static       FUIArrayDatasource* Make(FUIDatasource* Datasource, bool bDestroyChildren = false);
+	static       FUIArrayDatasource& Make(FUIDatasource& Datasource, bool bDestroyChildren = false);
+	static       FUIArrayDatasource* Cast(FUIDatasource* Datasource) { return IsArray(Datasource) ? static_cast<FUIArrayDatasource*>(Datasource) : nullptr; }
+	static const FUIArrayDatasource* Cast(const FUIDatasource* Datasource) { return IsArray(Datasource) ? static_cast<const FUIArrayDatasource*>(Datasource) : nullptr; }
+	static const FName ItemBaseName;
+};
+static_assert(sizeof(FUIArrayDatasource) == sizeof(FUIDatasource), "The array datasource class is just a type discretized UIDatasource, it needs be binary equivalent.");

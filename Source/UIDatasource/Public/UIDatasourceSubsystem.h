@@ -39,6 +39,9 @@ public:
 	FUIDatasource* FindChildDatasource(FUIDatasource* Parent, FName Name);
 
 	void DestroyDatasource(FUIDatasource* Datasource);
+
+	int Num() const { return AllocatedCount; };
+	static constexpr int Capacity() { return ChunkSize; }
 	
 protected:
 	static constexpr int ChunkSize = 2048;
