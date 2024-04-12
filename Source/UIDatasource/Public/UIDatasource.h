@@ -226,12 +226,13 @@ struct UIDATASOURCE_API FUIArrayDatasource : FUIDatasource
 	int32 GetNum() const { return Get<int32>(); }
 	FUIDatasource* Append();
 	void Empty(bool bDestroyChildren = false);
+	FUIDatasource* GetChildAt(int32 Index) const;
 
 	static       bool                IsArray(const FUIDatasource* Datasource) { return EnumHasAllFlags(Datasource->Flags, EUIDatasourceFlag::IsArray); }
 	static       FUIArrayDatasource* Make(FUIDatasource* Datasource, bool bDestroyChildren = false);
 	static       FUIArrayDatasource& Make(FUIDatasource& Datasource, bool bDestroyChildren = false);
-	static       FUIArrayDatasource* Cast(FUIDatasource* Datasource) { return IsArray(Datasource) ? static_cast<FUIArrayDatasource*>(Datasource) : nullptr; }
-	static const FUIArrayDatasource* Cast(const FUIDatasource* Datasource) { return IsArray(Datasource) ? static_cast<const FUIArrayDatasource*>(Datasource) : nullptr; }
+	static       FUIArrayDatasource* Cast(FUIDatasource* Datasource) { return Datasource && IsArray(Datasource) ? static_cast<FUIArrayDatasource*>(Datasource) : nullptr; }
+	static const FUIArrayDatasource* Cast(const FUIDatasource* Datasource) { return Datasource && IsArray(Datasource) ? static_cast<const FUIArrayDatasource*>(Datasource) : nullptr; }
 	static const FName ItemBaseName;
 };
 static_assert(sizeof(FUIArrayDatasource) == sizeof(FUIDatasource), "The array datasource class is just a type discretized UIDatasource, it needs be binary equivalent.");

@@ -67,6 +67,13 @@ void FUIArrayDatasource::Empty(bool bDestroyChildren)
 	Set<int32>(0);
 }
 
+FUIDatasource* FUIArrayDatasource::GetChildAt(int32 Index) const
+{
+	FName ChildName = ItemBaseName;
+	ChildName.SetNumber(Index + 1); // FName numbers starts at 1
+	return GetPool()->FindChildDatasource(this, ChildName);
+}
+
 FUIArrayDatasource* FUIArrayDatasource::Make(FUIDatasource* Datasource, bool bDestroyChildren)
 {
 	check(Datasource);

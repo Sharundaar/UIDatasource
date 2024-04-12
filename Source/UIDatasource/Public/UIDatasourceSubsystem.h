@@ -36,7 +36,7 @@ public:
 	FUIDatasource* FindDatasource(const FUIDatasource* Parent, FAnsiStringView Path) const;
 	
 	FUIDatasource* FindOrCreateChildDatasource(FUIDatasource* Parent, FName Name);
-	FUIDatasource* FindChildDatasource(FUIDatasource* Parent, FName Name);
+	FUIDatasource* FindChildDatasource(const FUIDatasource* Parent, FName Name);
 
 	void DestroyDatasource(FUIDatasource* Datasource);
 

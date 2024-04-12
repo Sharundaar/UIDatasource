@@ -247,7 +247,7 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Par
 	return ChildIt;
 }
 
-FUIDatasource* FUIDatasourcePool::FindChildDatasource(FUIDatasource* Parent, FName Name)
+FUIDatasource* FUIDatasourcePool::FindChildDatasource(const FUIDatasource* Parent, FName Name)
 {
 	UIDATASOURCE_FUNC_TRACE();
 	

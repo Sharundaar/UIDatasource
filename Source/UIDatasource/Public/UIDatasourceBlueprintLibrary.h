@@ -17,6 +17,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category=UIDatasource)
 	static FUIDatasourceHandle FindOrCreateDatasource(FUIDatasourceHandle Parent, FString Path);
 
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Is Array")
+	static bool ArrayDatasource_IsArray(FUIDatasourceHandle ArrayHandle);
+	
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, meta=(CompactNodeTitle="NUM"))
+	static int32 ArrayDatasource_GetNum(FUIDatasourceHandle ArrayHandle);
+	
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Get Child At")
+	static FUIDatasourceHandle ArrayDatasource_GetChildAt(FUIDatasourceHandle ArrayHandle, int32 Index);
+	
+	UFUNCTION(BlueprintCallable, Category=UIArrayDatasource, DisplayName="Append")
+	static FUIDatasourceHandle ArrayDatasource_Append(FUIDatasourceHandle ArrayHandle);
+
 	// @formatter:off
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static int32		GetInt(FUIDatasourceHandle Handle);
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static uint8		GetIntAsByte(FUIDatasourceHandle Handle);

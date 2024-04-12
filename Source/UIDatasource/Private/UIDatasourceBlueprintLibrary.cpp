@@ -10,6 +10,38 @@ FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateDatasource(FUIDat
 	return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(Parent.Get(), *Path);
 }
 
+bool UUIDatasourceBlueprintLibrary::ArrayDatasource_IsArray(FUIDatasourceHandle ArrayHandle)
+{
+	return FUIArrayDatasource::Cast(ArrayHandle.Get()) != nullptr;
+}
+
+int32 UUIDatasourceBlueprintLibrary::ArrayDatasource_GetNum(FUIDatasourceHandle ArrayHandle)
+{
+	if(const FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		return ArrayDatasource->GetNum();
+	}
+	return 0;
+}
+
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_GetChildAt(FUIDatasourceHandle ArrayHandle, int32 Index)
+{
+	if(const FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		return ArrayDatasource->GetChildAt(Index);
+	}
+	return {};
+}
+
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_Append(FUIDatasourceHandle ArrayHandle)
+{
+	if(FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		return ArrayDatasource->Append();
+	}
+	return {};
+}
+
 template<typename T>
 T GetDatasourceValue(FUIDatasourceHandle Handle)
 {
