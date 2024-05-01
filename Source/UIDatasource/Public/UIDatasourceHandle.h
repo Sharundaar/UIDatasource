@@ -6,6 +6,7 @@
 #include "UIDatasourceHandle.generated.h"
 
 struct FUIDatasource;
+class UObject;
 
 USTRUCT(BlueprintType)
 struct UIDATASOURCE_API FUIDatasourceHandle
@@ -20,6 +21,7 @@ struct UIDATASOURCE_API FUIDatasourceHandle
 	FUIDatasource& Get_Ref() const;
 	bool operator==(const FUIDatasourceHandle& Handle) const;
 	bool operator!=(const FUIDatasourceHandle& Handle) const;
+	bool ExportTextItem(FString& ValueStr, FUIDatasourceHandle const& DefaultValue, UObject* Parent, int32 PortFlags, UObject* ExportRootScope) const;
 
 	FUIDatasourcePackedId Id = 0;
 };
@@ -28,3 +30,12 @@ inline uint32 GetTypeHash(const FUIDatasourceHandle& Handle)
 {
 	return GetTypeHash(Handle.Id);
 }
+
+template<>
+struct TStructOpsTypeTraits<FUIDatasourceHandle> : public TStructOpsTypeTraitsBase2<FUIDatasourceHandle>
+{
+	enum
+	{
+		WithExportTextItem = true,
+	};
+};

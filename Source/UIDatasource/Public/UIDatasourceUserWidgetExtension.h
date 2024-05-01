@@ -26,9 +26,11 @@ public:
 	virtual void NativeOnDatasourceChanging(FUIDatasourceHandle Handle);
 	virtual void NativeOnDatasourceChanged(FUIDatasourceHandle Handle);
 
+	// Called before the datasource has been changed, can be used to prepare a datasource before assignation
 	UFUNCTION(BlueprintImplementableEvent, DisplayName="Pre Datasource Change")
 	void BP_OnDatasourceChanging(FUIDatasourceHandle Handle);
-	
+
+	// Called after the widget's datasource has been changed, can be used to batch setup states
 	UFUNCTION(BlueprintImplementableEvent, DisplayName="Post Datasource Change")
 	void BP_OnDatasourceChanged(FUIDatasourceHandle Handle);
 };
@@ -71,15 +73,19 @@ protected:
 };
 
 USTRUCT()
-struct FUIDataBindTemplate
+struct UIDATASOURCE_API FUIDataBindTemplate
 {
 	GENERATED_BODY()
 	
-	UPROPERTY() FName BindDelegateName;
-	UPROPERTY() FString Path;
+	UPROPERTY()
+	FName BindDelegateName = {};
+
+	UPROPERTY()
+	FString Path = {};
 
 #if WITH_EDITORONLY_DATA
-	UPROPERTY() FUIDatasourceDescriptor Descriptor;
+	UPROPERTY()
+	FUIDatasourceDescriptor Descriptor;
 #endif
 };
 

@@ -32,6 +32,7 @@ public class UIDatasourceEditor : ModuleRules
                 "GraphEditor",
                 "WorkspaceMenuStructure",
                 "LiveCoding",
+                "PropertyEditor",
             }
         );
     }

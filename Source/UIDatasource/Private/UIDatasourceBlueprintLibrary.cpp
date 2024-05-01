@@ -10,6 +10,29 @@ FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateDatasource(FUIDat
 	return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(Parent.Get(), *Path);
 }
 
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindDatasource(FUIDatasourceHandle Parent, FString Path)
+{
+	return UUIDatasourceSubsystem::Get()->Pool.FindDatasource(Parent.Get(), *Path);
+}
+
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindChildDatasource(FUIDatasourceHandle ParentHandle, FName ChildName)
+{
+	if(FUIDatasource* Parent = ParentHandle.Get())
+	{
+		return UUIDatasourceSubsystem::Get()->Pool.FindChildDatasource(Parent, ChildName);
+	}
+	return {};
+}
+
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateChildDatasource(FUIDatasourceHandle ParentHandle, FName ChildName)
+{
+	if(FUIDatasource* Parent = ParentHandle.Get())
+	{
+		return UUIDatasourceSubsystem::Get()->Pool.FindOrCreateChildDatasource(Parent, ChildName);
+	}
+	return {};
+}
+
 bool UUIDatasourceBlueprintLibrary::IsValid(FUIDatasourceHandle Handle)
 {
 	return Handle.IsValid();
@@ -18,6 +41,15 @@ bool UUIDatasourceBlueprintLibrary::IsValid(FUIDatasourceHandle Handle)
 bool UUIDatasourceBlueprintLibrary::EqualEqual_DatasourceHandle(FUIDatasourceHandle HandleA, FUIDatasourceHandle HandleB)
 {
 	return HandleA == HandleB;
+}
+
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_MakeArray(FUIDatasourceHandle Handle)
+{
+	if(FUIDatasource* Datasource = Handle.Get())
+	{
+		return FUIArrayDatasource::Make(Datasource);
+	}
+	return {};
 }
 
 bool UUIDatasourceBlueprintLibrary::ArrayDatasource_IsArray(FUIDatasourceHandle ArrayHandle)
@@ -34,11 +66,71 @@ int32 UUIDatasourceBlueprintLibrary::ArrayDatasource_GetNum(FUIDatasourceHandle 
 	return 0;
 }
 
+TArray<FUIDatasourceHandle> UUIDatasourceBlueprintLibrary::ArrayDatasource_ToArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo, int32 KeepNumMultipleOf)
+{
+	TArray<FUIDatasourceHandle> Children;
+	
+	if (FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		const int32 Num = ArrayDatasource->GetNum();
+		for (int32 Index=0; Index < Num; ++Index)
+		{
+			Children.Add(ArrayDatasource->GetChildAt(Index));
+		}
+
+		for (int Index=Num; Index < PadArrayUpTo; ++Index)
+		{
+			Children.Add(FUIDatasourceHandle{});
+		}
+
+		if (KeepNumMultipleOf > 0)
+		{
+			for(int Index=0; Index < Children.Num() % KeepNumMultipleOf; ++Index)
+			{
+				Children.Add(FUIDatasourceHandle{});
+			}
+		}
+	}
+
+	return Children;
+}
+
+TArray<UUIDatasourceWrapper*> UUIDatasourceBlueprintLibrary::ArrayDatasource_ToObjectArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo, int32 KeepNumMultipleOf)
+{
+	TArray<UUIDatasourceWrapper*> Children;
+	
+	if(FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		const int32 Num = ArrayDatasource->GetNum();
+		for(int32 Index=0; Index < Num; ++Index)
+		{
+			UUIDatasourceWrapper* Wrapper = NewObject<UUIDatasourceWrapper>();
+			Wrapper->SetHandle(ArrayDatasource->GetChildAt(Index));
+			Children.Add(Wrapper);
+		}
+
+		for (int Index=Num; Index < PadArrayUpTo; ++Index)
+		{
+			Children.Add(NewObject<UUIDatasourceWrapper>());
+		}
+
+		if (KeepNumMultipleOf > 0)
+		{
+			for(int Index=0; Index < Children.Num() % KeepNumMultipleOf; ++Index)
+			{
+				Children.Add(NewObject<UUIDatasourceWrapper>());
+			}
+		}
+	}
+
+	return Children;
+}
+
 FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_GetChildAt(FUIDatasourceHandle ArrayHandle, int32 Index)
 {
 	if(const FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
 	{
-		return ArrayDatasource->GetChildAt(Index);
+		return 0 <= Index && Index < ArrayDatasource->GetNum() ? ArrayDatasource->GetChildAt(Index) : nullptr;
 	}
 	return {};
 }
@@ -93,6 +185,36 @@ IMPL_LIB_FUNC(bool,			Bool);
 IMPL_LIB_FUNC(FString,		String);
 IMPL_LIB_FUNC(FName,		FName);
 IMPL_LIB_FUNC(FText,		Text);
-IMPL_LIB_FUNC(TSoftObjectPtr<UTexture2D>, Image)
+IMPL_LIB_FUNC(FUIDatasourceImage, Image)
+
 IMPL_LIB_FUNC(FGameplayTag, GameplayTag)
+
 #undef IMPL_LIB_FUNC
+
+TSoftObjectPtr<UTexture2D> UUIDatasourceBlueprintLibrary::GetTexture(FUIDatasourceHandle Handle)
+{
+	return GetDatasourceValue<FUIDatasourceImage>(Handle).AsTexture();
+}
+
+TSoftObjectPtr<UMaterialInterface> UUIDatasourceBlueprintLibrary::GetMaterial(FUIDatasourceHandle Handle)
+{
+	return GetDatasourceValue<FUIDatasourceImage>(Handle).AsMaterial();
+}
+
+bool UUIDatasourceBlueprintLibrary::SetTexture(FUIDatasourceHandle Handle, TSoftObjectPtr<UTexture2D> Value)
+{
+	if(FUIDatasource* Datasource = Handle.Get())
+	{
+		return Datasource->Set(FUIDatasourceImage(Value));
+	}
+	return false;
+}
+
+bool UUIDatasourceBlueprintLibrary::SetMaterial(FUIDatasourceHandle Handle, TSoftObjectPtr<UMaterialInterface> Value)
+{
+	if(FUIDatasource* Datasource = Handle.Get())
+	{
+		return Datasource->Set(FUIDatasourceImage(Value));
+	}
+	return false;
+}

@@ -11,13 +11,30 @@
 #include "KismetCompiler.h"
 #include "UIDatasourceArchetype.h"
 #include "UIDatasourceBlueprintLibrary.h"
+#include "UIDatasourceEditorHelpers.h"
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "WidgetBlueprint.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
+#include "Engine/Texture2D.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Materials/MaterialInstance.h"
+#include "Styling/AppStyle.h"
 
-UE_DISABLE_OPTIMIZATION
+namespace UK2Node_UIDatasourceSingleBinding_Local 
+{
+	FUIDatasourceDescriptor GenerateDescriptorForNode(const UK2Node_UIDatasourceSingleBinding* Node)
+	{
+		return FUIDatasourceDescriptor{
+			.Path = Node->Path,
+			.Type = Node->Type,
+			.EnumPath = Node->EnumPath,
+			.ImageType = Node->ImageType,
+			.Archetype = nullptr,
+			.ImportMethod = EUIDatasourceArchetypeImportMethod::AsChild
+		};
+	}
+}
 
 void UK2Node_UIDatasourceSingleBinding::CreateProperlyTypedModelOutputPin()
 {
@@ -28,62 +45,9 @@ void UK2Node_UIDatasourceSingleBinding::CreateProperlyTypedModelOutputPin()
 		Pins.RemoveAt(1, 1, false);
 	}
 
-	{
-		FName Category;
-		FName SubCategory = NAME_None;
-		UObject* SubCategoryObject = nullptr;
-		switch (Type)
-		{
-		case EUIDatasourceValueType::Int:
-			Category = UEdGraphSchema_K2::PC_Int;
-			break;
-		case EUIDatasourceValueType::Bool:
-			Category = UEdGraphSchema_K2::PC_Boolean;
-			break;
-		case EUIDatasourceValueType::Float:
-			Category = UEdGraphSchema_K2::PC_Real;
-			SubCategory = UEdGraphSchema_K2::PC_Float;
-			break;
-		case EUIDatasourceValueType::Text:
-			Category = UEdGraphSchema_K2::PC_Text;
-			break;
-		case EUIDatasourceValueType::Name:
-			Category = UEdGraphSchema_K2::PC_Name;
-			break;
-		case EUIDatasourceValueType::String:
-			Category = UEdGraphSchema_K2::PC_String;
-			break;
-		case EUIDatasourceValueType::GameplayTag:
-			Category = UEdGraphSchema_K2::PC_Struct;
-			SubCategoryObject = FGameplayTag::StaticStruct();
-			break;
-		case EUIDatasourceValueType::Image:
-			Category = UEdGraphSchema_K2::PC_SoftObject;
-			SubCategoryObject = UTexture2D::StaticClass();
-			break;
-		case EUIDatasourceValueType::Enum:
-			if (!EnumPath.IsEmpty())
-			{
-				Category = UEdGraphSchema_K2::PC_Byte;
-				SubCategoryObject = FindObject<UEnum>(nullptr, *EnumPath);
-			}
-			else
-			{
-				Category = UEdGraphSchema_K2::PC_Byte;
-			}
-			break;
-		case EUIDatasourceValueType::Archetype:
-		case EUIDatasourceValueType::Void: // default to sending the datasource handle
-			Category = UEdGraphSchema_K2::PC_Struct;
-			SubCategoryObject = FUIDatasourceHandle::StaticStruct();
-			break;
-		default: checkf(false, TEXT("Missing enum value implementation %d"), Type);
-		}
+	FEdGraphPinType PinType = UIDatasourceEditorHelpers::GetPinTypeForDescriptor(UK2Node_UIDatasourceSingleBinding_Local::GenerateDescriptorForNode(this));
 
-		FCreatePinParams Params;
-		Params.Index = 1;
-		CreatePin(EGPD_Output, Category, SubCategory, SubCategoryObject, *Path, Params);
-	}
+	CreatePin(EGPD_Output, PinType, *Path, 1);
 
 	// Notify the graph that the node has been changed
 	if (UEdGraph* Graph = GetGraph())
@@ -144,40 +108,7 @@ void UK2Node_UIDatasourceSingleBinding::ExpandNode(FKismetCompilerContext& Compi
 	if (bNeitherNoneOrArchetypeType)
 	{
 		UK2Node_CallFunction* GetDatasourceValueNode = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
-		static FName GetDatasourceValueFunctionName;
-		switch (Type)
-		{
-		case EUIDatasourceValueType::Int:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetInt);
-			break;
-		case EUIDatasourceValueType::Float:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetFloat);
-			break;
-		case EUIDatasourceValueType::Bool:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetBool);
-			break;
-		case EUIDatasourceValueType::Text:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetText);
-			break;
-		case EUIDatasourceValueType::Name:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetFName);
-			break;
-		case EUIDatasourceValueType::GameplayTag:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetGameplayTag);
-			break;
-		case EUIDatasourceValueType::Enum:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetIntAsByte);
-			break;
-		case EUIDatasourceValueType::Image:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetImage);
-			break;
-		case EUIDatasourceValueType::String:
-			GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetString);
-			break;
-		case EUIDatasourceValueType::Void: break; // shouldn't get here
-		default: checkf(false, TEXT("Missing enum value implementation %d"), Type);
-		}
-		GetDatasourceValueNode->FunctionReference.SetExternalMember(GetDatasourceValueFunctionName, UUIDatasourceBlueprintLibrary::StaticClass());
+		GetDatasourceValueNode->FunctionReference = UIDatasourceEditorHelpers::GetGetterFunctionForDescriptor(UK2Node_UIDatasourceSingleBinding_Local::GenerateDescriptorForNode(this));
 		GetDatasourceValueNode->AllocateDefaultPins();
 		UEdGraphPin* ReturnPin = GetDatasourceValueNode->GetReturnValuePin();
 		UEdGraphPin* DatasourceHandlePin = GetDatasourceValueNode->FindPin(FName(TEXT("Handle"))); // Name here is assumed to be the same for all GetDatasourceValueFunc
@@ -355,5 +286,3 @@ FLinearColor UK2Node_UIDatasourceSingleBinding::GetNodeTitleColor() const
 {
 	return GetDefault<UGraphEditorSettings>()->EventNodeTitleColor;
 }
-
-UE_ENABLE_OPTIMIZATION

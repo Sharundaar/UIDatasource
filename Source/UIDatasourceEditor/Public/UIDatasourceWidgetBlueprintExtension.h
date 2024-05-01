@@ -6,6 +6,8 @@
 
 #include "UIDatasourceWidgetBlueprintExtension.generated.h"
 
+class UUIDatasourceArchetype;
+
 UCLASS()
 class UUIDatasourceWidgetBlueprintExtension : public UWidgetBlueprintExtension
 {

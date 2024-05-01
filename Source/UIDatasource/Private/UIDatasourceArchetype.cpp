@@ -56,7 +56,7 @@ void UUIDatasourceArchetype::MockDatasource(FUIDatasource* Datasource) const
 				ChildDatasource->Set<FString>(MockStringSource[FMath::RandHelper(MockNameSource.Num())]);
 				break;
 			case EUIDatasourceValueType::Image:
-				ChildDatasource->Set<TSoftObjectPtr<UTexture2D>>({});
+				ChildDatasource->Set<FUIDatasourceImage>({});
 				break;
 			case EUIDatasourceValueType::GameplayTag:
 				ChildDatasource->Set<FGameplayTag>({});
@@ -125,7 +125,7 @@ void UUIDatasourceArchetype::GenerateDatasource(FUIDatasource* Datasource) const
 				ChildDatasource->Set<FString>({});
 				break;
 			case EUIDatasourceValueType::Image:
-				ChildDatasource->Set<TSoftObjectPtr<UTexture2D>>({});
+				ChildDatasource->Set<FUIDatasourceImage>({});
 				break;
 			case EUIDatasourceValueType::GameplayTag:
 				ChildDatasource->Set<FGameplayTag>({});

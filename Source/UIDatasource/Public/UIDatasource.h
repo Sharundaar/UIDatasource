@@ -5,6 +5,8 @@
 #include "GameplayTagContainer.h"
 #include "UIDatasourceDefines.h"
 #include "UIDatasourceHandle.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 
 #include "UIDatasource.generated.h"
 
@@ -29,11 +31,33 @@ enum class EUIDatasourceValueType : uint8
 	Archetype, // @NOTE: This is for archetype UX purposes, devolves to Void at runtime
 };
 
+// A struct capable of holding UImage compatible assets
+USTRUCT(BlueprintType)
+struct FUIDatasourceImage
+{
+	GENERATED_BODY()
+
+	FUIDatasourceImage() {}
+	FUIDatasourceImage(TSoftObjectPtr<UTexture2D> Texture2D) : Image(Texture2D) {}
+	FUIDatasourceImage(TSoftObjectPtr<UMaterialInterface> Material) : Image(Material) {}
+
+	// Soft Ptr of an image compatible with UImage, see UImage Image property
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(AllowPrivateAccess="true", DisplayThumbnail="true", DisplayName="Image", AllowedClasses="/Script/Engine.Texture,/Script/Engine.MaterialInterface,/Script/Engine.SlateTextureAtlasInterface", DisallowedClasses = "/Script/MediaAssets.MediaTexture"))
+	TSoftObjectPtr<UObject> Image = {};
+
+	// Cast the UObject soft ptr to Texture2D soft ptr
+	TSoftObjectPtr<UTexture2D> AsTexture() const { return TSoftObjectPtr<UTexture2D>(Image.ToSoftObjectPath()); };
+	
+	// Cast the UObject soft ptr to MaterialInterface soft ptr
+	TSoftObjectPtr<UMaterialInterface> AsMaterial() const { return TSoftObjectPtr<UMaterialInterface>(Image.ToSoftObjectPath()); };
+
+	bool operator==(const FUIDatasourceImage& Other) const { return Image == Other.Image; }
+};
+
 struct FUIDatasourceValue
 {
 	struct FVoidType {};
-	
-	using FValueType = TVariant<FVoidType, int32, float, bool, FName, FText, FString, TSoftObjectPtr<UTexture2D>, FGameplayTag>;
+	using FValueType = TVariant<FVoidType, int32, float, bool, FName, FText, FString, FUIDatasourceImage, FGameplayTag>;
 
 	FValueType Value;
 
@@ -50,7 +74,7 @@ struct FUIDatasourceValue
 		if(Value.IsType<FName>())		return EUIDatasourceValueType::Name;
 		if(Value.IsType<FText>())		return EUIDatasourceValueType::Text;
 		if(Value.IsType<FString>())		return EUIDatasourceValueType::String;
-		if(Value.IsType<TSoftObjectPtr<UTexture2D>>()) return EUIDatasourceValueType::Image;
+		if(Value.IsType<FUIDatasourceImage>()) return EUIDatasourceValueType::Image;
 		if(Value.IsType<FGameplayTag>()) return EUIDatasourceValueType::GameplayTag;
 		return EUIDatasourceValueType::Void;
 	}
@@ -137,7 +161,7 @@ struct FUIDatasourceHeader
 enum class EUIDatasourceFlag : uint8
 {
 	None      = 0,
-	IsInvalid = 1 << 0,
+	IsSink = 1 << 0, // Sink datasource returns themselves when querying children, no-op on Set, and return default values on Get 
 	IsArray   = 1 << 1,
 };
 ENUM_CLASS_FLAGS(EUIDatasourceFlag)
@@ -188,11 +212,14 @@ struct UIDATASOURCE_API FUIDatasource
 	FUIDatasource* FindOrCreateFromPath(FAnsiStringView Path);
 	FUIDatasource* FindFromPath(FWideStringView Path) const;
 	FUIDatasource* FindFromPath(FAnsiStringView Path) const;
+
+	void GetPath(FString& OutPath);
 	
 	template<typename T>
 	bool Set(T InValue)
 	{
-		if(Value.Set<T>(InValue))
+		if(!EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink)
+			&& Value.Set<T>(InValue))
 		{
 			OnValueChanged();
 			return true;
@@ -203,13 +230,13 @@ struct UIDATASOURCE_API FUIDatasource
 	template<typename T>
 	T Get() const
 	{
-		return Value.Get<T>();
+		return EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink) ? T{} : Value.Get<T>();
 	}
 
 	template<typename T>
 	bool TryGet(T& OutValue) const
 	{
-		return Value.TryGet<T>(OutValue);
+		return EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink) ? false : Value.TryGet<T>(OutValue);
 	}
 
 	FUIDatasource& operator[](FWideStringView Path);

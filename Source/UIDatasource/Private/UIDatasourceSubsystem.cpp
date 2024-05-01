@@ -17,7 +17,7 @@ static bool IsValid(const FUIDatasource* Datasource)
 static const FUIDatasource MakeSinkDatasource()
 {
 	FUIDatasource Sink = {};
-	EnumAddFlags(Sink.Flags, EUIDatasourceFlag::IsInvalid);
+	EnumAddFlags(Sink.Flags, EUIDatasourceFlag::IsSink);
 	return Sink;
 }  
 FUIDatasource FUIDatasourcePool::SinkDatasource = MakeSinkDatasource();
@@ -109,7 +109,7 @@ static FUIDatasource* AllocateAndAttachDatasource(FUIDatasourcePool& Pool, FUIDa
 	FUIDatasource* NewDatasource = Pool.Allocate();
 	if (!NewDatasource)
 	{
-		return NewDatasource;
+		return &Pool.SinkDatasource;
 	}
 	
 	NewDatasource->Name = Name;
@@ -137,6 +137,11 @@ static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, F
 		Current = Pool.GetRootDatasource();
 	}
 
+	if(EnumHasAllFlags(Current->Flags, EUIDatasourceFlag::IsSink))
+	{
+		return Current;
+	}
+
 	while(!Path.IsEmpty())
 	{
 		FName SearchName;
@@ -154,7 +159,7 @@ static FUIDatasource* FindOrCreateDatasource_Internal(FUIDatasourcePool& Pool, F
 		FUIDatasource* ChildIt = Pool.GetDatasourceById(Current->FirstChild);
 		while(ChildIt && ChildIt->Name != SearchName)
 		{
-			ChildIt = Pool.GetDatasourceById(ChildIt->NextSibling);
+			ChildIt = Pool.GetDatasourceById(ChildIt-> NextSibling);
 		}
 		
 		if(!ChildIt)
@@ -178,6 +183,11 @@ static FUIDatasource* FindDatasource_Internal(const FUIDatasourcePool& Pool, con
 	if(!Current)
 	{
 		Current = Pool.GetRootDatasource();
+	}
+	
+	if(EnumHasAllFlags(Current->Flags, EUIDatasourceFlag::IsSink))
+	{
+		return const_cast<FUIDatasource*>(Current);
 	}
 
 	while(Current && !Path.IsEmpty())
@@ -232,6 +242,11 @@ FUIDatasource* FUIDatasourcePool::FindOrCreateChildDatasource(FUIDatasource* Par
 	{
 		Parent = GetRootDatasource();
 	}
+	
+	if(EnumHasAllFlags(Parent->Flags, EUIDatasourceFlag::IsSink))
+	{
+		return Parent;
+	}
 
 	FUIDatasource* ChildIt = GetDatasourceById(Parent->FirstChild);
 	while(ChildIt && ChildIt->Name != Name)
@@ -256,10 +271,15 @@ FUIDatasource* FUIDatasourcePool::FindChildDatasource(const FUIDatasource* Paren
     	return nullptr;
     }
 
-    if(!Parent)
+	if(!Parent)
     {
     	Parent = GetRootDatasource();
     }
+
+	if(EnumHasAllFlags(Parent->Flags, EUIDatasourceFlag::IsSink))
+	{
+		return const_cast<FUIDatasource*>(Parent);
+	}
 
     FUIDatasource* ChildIt = GetDatasourceById(Parent->FirstChild);
     while(ChildIt && ChildIt->Name != Name)
@@ -273,6 +293,11 @@ FUIDatasource* FUIDatasourcePool::FindChildDatasource(const FUIDatasource* Paren
 void FUIDatasourcePool::DestroyDatasource(FUIDatasource* Datasource)
 {
 	UIDATASOURCE_FUNC_TRACE();
+
+	if(EnumHasAllFlags(Datasource->Flags, EUIDatasourceFlag::IsSink))
+	{
+		return;
+	}
 	
 	FirstFree = FMath::Min(FirstFree, static_cast<int>(Datasource->Id));
 
@@ -284,6 +309,25 @@ void FUIDatasourcePool::DestroyDatasource(FUIDatasource* Datasource)
 	UUIDatasourceSubsystem::LogDatasourceChange({Datasource});
 	Datasource->Id = EUIDatasourceId::Invalid;
 	Datasource->Generation++;
+
+	// Patchup the linked list data
+	FUIDatasource* PrevSibling = GetDatasourceById(Datasource->PrevSibling);
+	FUIDatasource* NextSibling = GetDatasourceById(Datasource->NextSibling);
+	FUIDatasource* Parent = GetDatasourceById(Datasource->Parent);
+	if(PrevSibling != nullptr)
+	{
+		PrevSibling->NextSibling = Datasource->NextSibling;
+	}
+
+	if(NextSibling != nullptr)
+	{
+		NextSibling->PrevSibling = Datasource->PrevSibling;
+	}
+	
+	if(PrevSibling == nullptr && Parent != nullptr)
+	{
+		Parent->FirstChild = Datasource->NextSibling;
+	}
 }
 
 UUIDatasourceSubsystem* UUIDatasourceSubsystem::Instance = nullptr;

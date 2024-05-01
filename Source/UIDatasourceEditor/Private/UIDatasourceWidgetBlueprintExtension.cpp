@@ -16,7 +16,7 @@ void UUIDatasourceWidgetBlueprintExtension::HandleFinishCompilingClass(UWidgetBl
 
 	if(CurrentContext->bIsFullCompile)
 	{
-		UUIDatasourceWidgetBlueprintGeneratedClassExtension* UIDatasourceExtension = NewObject<UUIDatasourceWidgetBlueprintGeneratedClassExtension>();
+		UUIDatasourceWidgetBlueprintGeneratedClassExtension* UIDatasourceExtension = NewObject<UUIDatasourceWidgetBlueprintGeneratedClassExtension>(Class);
 		
 		CurrentContext->AddExtension(Class, UIDatasourceExtension);
 
@@ -36,6 +36,7 @@ void UUIDatasourceWidgetBlueprintExtension::HandleFinishCompilingClass(UWidgetBl
 					Node->Path,
 					Node->Type,
 					Node->EnumPath,
+					Node->ImageType,
 				};
 #endif
 				UIDatasourceExtension->Bindings.Add(Template);

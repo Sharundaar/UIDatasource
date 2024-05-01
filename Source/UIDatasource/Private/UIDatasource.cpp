@@ -3,10 +3,45 @@
 #include "UIDatasource.h"
 #include "UIDatasourceSubsystem.h"
 
+namespace UIDatasourceHelpers
+{
+	FName GetDisplayName(FName Base, int32 Index)
+	{
+		Base.SetNumber(Index + 1); // FName numbers starts at 1, so the first item should have Number == 1 (which will display as Item_0, oh well...)
+		return Base;
+	}
+}
+
 FUIDatasource* FUIDatasource::FindOrCreateFromPath(FWideStringView Path) { return GetPool()->FindOrCreateDatasource(this, Path); }
 FUIDatasource* FUIDatasource::FindOrCreateFromPath(FAnsiStringView Path) { return GetPool()->FindOrCreateDatasource(this, Path); }
 FUIDatasource* FUIDatasource::FindFromPath(FWideStringView Path) const { return GetPool()->FindDatasource(this, Path); }
 FUIDatasource* FUIDatasource::FindFromPath(FAnsiStringView Path) const { return GetPool()->FindDatasource(this, Path); }
+
+void FUIDatasource::GetPath(FString& OutPath)
+{
+	EUIDatasourceId Chain[64];
+	constexpr int32 ChainBufferCapacity = UE_ARRAY_COUNT(Chain);
+	FUIDatasourcePool* Pool = GetPool();
+	int32 ChainLength = 0;
+	FUIDatasource* It = this;
+	while(It)
+	{
+		Chain[ChainBufferCapacity - ChainLength - 1] = It->Id;
+		ChainLength++;
+		It = Pool->GetDatasourceById(It->Parent);
+	}
+	
+	OutPath.Reset();
+	while(ChainLength)
+	{
+		Pool->GetDatasourceById(Chain[ChainBufferCapacity - ChainLength])->Name.AppendString(OutPath);
+		ChainLength--;
+		if(ChainLength > 0)
+		{
+			OutPath += TEXT('.');
+		}
+	}
+}
 
 #define OPERATOR_IMPL(Type, Func, IS_CONST) \
 FUIDatasource& FUIDatasource::operator[](Type Path) IS_CONST \
@@ -43,9 +78,8 @@ const FName FUIArrayDatasource::ItemBaseName = "Item";
 
 FUIDatasource* FUIArrayDatasource::Append()
 {
-	FName ChildName = ItemBaseName;
 	const int32 Num = GetNum();
-	ChildName.SetNumber(Num + 1); // FName numbers starts at 1, so the first item should have Number == 1 (which will display as Item_0, oh well...)
+	const FName ChildName = UIDatasourceHelpers::GetDisplayName(ItemBaseName, Num);
 	if(FUIDatasource* Child = GetPool()->FindOrCreateChildDatasource(this, ChildName))
 	{
 		Set(Num + 1);
@@ -69,8 +103,8 @@ void FUIArrayDatasource::Empty(bool bDestroyChildren)
 
 FUIDatasource* FUIArrayDatasource::GetChildAt(int32 Index) const
 {
-	FName ChildName = ItemBaseName;
-	ChildName.SetNumber(Index + 1); // FName numbers starts at 1
+	ensureMsgf(0 <= Index && Index < GetNum(), TEXT("Tried to access out of range datasource index (%d/%d)."), Index, GetNum());
+	const FName ChildName = UIDatasourceHelpers::GetDisplayName(ItemBaseName, Index);
 	return GetPool()->FindChildDatasource(this, ChildName);
 }
 

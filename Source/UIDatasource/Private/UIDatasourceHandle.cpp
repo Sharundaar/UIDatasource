@@ -36,3 +36,17 @@ bool FUIDatasourceHandle::operator!=(const FUIDatasourceHandle& Handle) const
 {
 	return Id != Handle.Id;
 }
+
+bool FUIDatasourceHandle::ExportTextItem(FString& ValueStr, FUIDatasourceHandle const& DefaultValue, UObject* Parent, int32 PortFlags, UObject* ExportRootScope) const
+{
+	if (FUIDatasource* Datasource = Get())
+	{
+		Datasource->GetPath(ValueStr);
+	}
+	else
+	{
+		ValueStr = TEXT("Invalid");
+	}
+
+	return true;
+}

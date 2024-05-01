@@ -17,6 +17,14 @@ enum class EUIDatasourceArchetypeImportMethod
 	AsArray,
 };
 
+// Types of supported image by the K2Node, allows to statically determine what kind of image we're dealing with for the TSoftObjectPtr pin
+UENUM()
+enum class EUIDatasourceImageType : uint8
+{
+	Texture,
+	Material,
+};
+
 USTRUCT()
 struct FUIDatasourceDescriptor
 {
@@ -31,6 +39,10 @@ struct FUIDatasourceDescriptor
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Enum", GetOptions="UIDatasource.UIDatasourceArchetype.GetEnumChoices"))
 	FString EnumPath = "";
 
+	// Image type of this descriptor, only useful if the type is Image
+	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Image"))
+	EUIDatasourceImageType ImageType = EUIDatasourceImageType::Texture;
+	
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Archetype"))
 	TObjectPtr<UUIDatasourceArchetype> Archetype = nullptr;
 
@@ -62,6 +74,7 @@ public:
 
 	void SetChildren(const TArray<FUIDatasourceDescriptor>& Descriptors);
 
+	// Return a string list of all loaded enums in the engine, used to gather UEnum* in editor for K2Node purposes
 	UFUNCTION()
 	static TArray<FString> GetEnumChoices();
 	

@@ -5,21 +5,30 @@
 #include "GraphEditAction.h"
 #include "ILiveCodingModule.h"
 #include "K2Node_UIDatasourceSingleBinding.h"
+#include "PropertyCustomizationHelpers.h"
 #include "PropertyEditorModule.h"
 #include "UIDatasourceArchetype.h"
+#include "UIDatasourceEditorHelpers.h"
 #include "UIDatasourceSubsystem.h"
 #include "UIDatasourceWidgetBlueprintExtension.h"
 #include "UMGEditorModule.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "BlueprintModes/WidgetBlueprintApplicationModes.h"
+#include "Engine/Texture2D.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Materials/MaterialInstance.h"
 #include "Styling/SlateStyleMacros.h"
 #include "Styling/SlateStyleRegistry.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Docking/SDockTab.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SNumericEntryBox.h"
+#include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Widgets/SBoxPanel.h"
 #include "Widgets/Views/STreeView.h"
 
 #define LOCTEXT_NAMESPACE "FUIDatasourceEditorModule"
@@ -130,30 +139,33 @@ void SUIDatasourcePanel::UpdateContent()
 	UUIDatasourceWidgetBlueprintExtension* Extension = UIDatasourceExtension.Get();
 	DatasourceArchetypeDetailsView->SetObject(Extension);
 
-	if (Extension && Extension->Archetype)
+	if (Extension)
 	{
 		UWidgetBlueprint* WidgetBlueprint = Extension->GetWidgetBlueprint();
 		check(WidgetBlueprint);
 
 		ArchetypeListData.Empty();
 		CustomListData.Empty();
-		
-		TArray<const UUIDatasourceArchetype*> Stack;
-		Stack.Add(Extension->Archetype);
-		while(!Stack.IsEmpty())
+
+		if (Extension->Archetype)
 		{
-			const UUIDatasourceArchetype* Archetype = Stack.Pop();
-			for (const FUIDatasourceDescriptor& Descriptor : Archetype->GetDescriptors())
+			TArray<const UUIDatasourceArchetype*> Stack;
+			Stack.Add(Extension->Archetype);
+			while(!Stack.IsEmpty())
 			{
-				if(Descriptor.IsInlineArchetype())
+				const UUIDatasourceArchetype* Archetype = Stack.Pop();
+				for (const FUIDatasourceDescriptor& Descriptor : Archetype->GetDescriptors())
 				{
-					Stack.Push(Descriptor.Archetype);
-					continue;
+					if(Descriptor.IsInlineArchetype())
+					{
+						Stack.Push(Descriptor.Archetype);
+						continue;
+					}
+					
+					const TSharedPtr<FListViewData>& Elem = ArchetypeListData.Add_GetRef(MakeShared<FListViewData>());
+					Elem->Descriptor = Descriptor;
+					Elem->Node = nullptr;
 				}
-				
-				const TSharedPtr<FListViewData>& Elem = ArchetypeListData.Add_GetRef(MakeShared<FListViewData>());
-				Elem->Descriptor = Descriptor;
-				Elem->Node = nullptr;
 			}
 		}
 
@@ -177,11 +189,12 @@ void SUIDatasourcePanel::UpdateContent()
 			{
 				const TSharedPtr<FListViewData>& Elem = CustomListData.Add_GetRef(MakeShared<FListViewData>());
 				Elem->Descriptor = FUIDatasourceDescriptor {
-					Node->Path,
-					Node->Type,
-					Node->EnumPath,
-					nullptr,
-					EUIDatasourceArchetypeImportMethod::AsChild
+					.Path = Node->Path,
+					.Type = Node->Type,
+					.EnumPath = Node->EnumPath,
+					.ImageType = Node->ImageType,
+					.Archetype = nullptr,
+					.ImportMethod = EUIDatasourceArchetypeImportMethod::AsChild
 				};
 				Elem->Node = Node;
 			}
@@ -238,7 +251,14 @@ void SUIDatasourcePanel::UpdateContent()
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SSeparator).Orientation(Orient_Vertical).Thickness(4.0f)
+					SNew(SBorder)
+					.BorderBackgroundColor(FSlateColor(FLinearColor(0.125f, 0.125f, 0.125f, 0.9f)))
+					[
+						SNew(STextBlock)
+						.Text(INVTEXT("Archetype bindings:"))
+						.Visibility_Lambda([this]() { return ArchetypeListData.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })
+						.Margin(FMargin{0.0f, 4.0f, 0.0f, 0.0f})
+					]
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
@@ -250,7 +270,14 @@ void SUIDatasourcePanel::UpdateContent()
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SSeparator).Orientation(Orient_Vertical).Thickness(4.0f)
+					SNew(SBorder)
+					.BorderBackgroundColor(FSlateColor(FLinearColor(0.125f, 0.125f, 0.125f, 0.9f)))
+					[
+						SNew(STextBlock)
+						.Text(INVTEXT("Custom bindings:"))
+						.Visibility_Lambda([this]() { return CustomListData.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })
+						.Margin(FMargin{0.0f, 4.0f, 0.0f, 0.0f})
+					]
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
@@ -400,64 +427,9 @@ SUIDatasourcePanel::~SUIDatasourcePanel()
 	BindingChangedEventHandler.Reset();
 }
 
-FEdGraphPinType GetPinTypeForDescriptor(const FUIDatasourceDescriptor& Descriptor)
-{
-	FEdGraphPinType PinType = {};
-	
-	switch (Descriptor.Type)
-	{
-	case EUIDatasourceValueType::Int:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Int;
-		break;
-	case EUIDatasourceValueType::Bool:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
-		break;
-	case EUIDatasourceValueType::Float:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Real;
-		PinType.PinSubCategory = UEdGraphSchema_K2::PC_Float;
-		break;
-	case EUIDatasourceValueType::Text:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Text;
-		break;
-	case EUIDatasourceValueType::Name:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Name;
-		break;
-	case EUIDatasourceValueType::String:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_String;
-		break;
-	case EUIDatasourceValueType::GameplayTag:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-		PinType.PinSubCategoryObject = FGameplayTag::StaticStruct();
-		break;
-	case EUIDatasourceValueType::Image:
-		PinType.PinCategory = UEdGraphSchema_K2::PC_SoftObject;
-		PinType.PinSubCategoryObject = UTexture2D::StaticClass();
-		break;
-	case EUIDatasourceValueType::Enum:
-		if (!Descriptor.EnumPath.IsEmpty())
-		{
-			PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
-			PinType.PinSubCategoryObject = FindObject<UEnum>(nullptr, *Descriptor.EnumPath);
-		}
-		else
-		{
-			PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
-		}
-		break;
-	case EUIDatasourceValueType::Archetype:
-	case EUIDatasourceValueType::Void: // default to sending the datasource handle
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-		PinType.PinSubCategoryObject = FUIDatasourceHandle::StaticStruct();
-		break;
-	default: checkf(false, TEXT("Missing enum value implementation %d"), Descriptor.Type);
-	}
-	
-	return PinType;
-}
-
 TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewData> InItem, const TSharedRef<STableViewBase>& InOwningTable)
 {
-	const FEdGraphPinType PinType = GetPinTypeForDescriptor(InItem->Descriptor);
+	const FEdGraphPinType PinType = UIDatasourceEditorHelpers::GetPinTypeForDescriptor(InItem->Descriptor);
 	const UEdGraphSchema_K2* Schema = GetDefault<UEdGraphSchema_K2>();
 	
 	return SNew(STableRow<TSharedPtr<FListViewData>>, InOwningTable)
@@ -498,6 +470,7 @@ TSharedRef<ITableRow> SUIDatasourcePanel::GenerateListRow(TSharedPtr<FListViewDa
 							SingleBindingNode->Path = InItem->Descriptor.Path;
 							SingleBindingNode->Type = InItem->Descriptor.Type;
 							SingleBindingNode->EnumPath = InItem->Descriptor.EnumPath;
+							SingleBindingNode->ImageType = InItem->Descriptor.ImageType;
 							SingleBindingNode->CreateNewGuid();
 							SingleBindingNode->PostPlacedNewNode();
 							SingleBindingNode->AllocateDefaultPins();
@@ -617,9 +590,11 @@ public:
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView);
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
+	const FSlateBrush* FindOrCreateImageBrush(FUIDatasource* Datasource, const TSoftObjectPtr<UObject>& Image);
 
 protected:
 	FUIDatasourceNodePtr Node;
+	TMap<FUIDatasourceHandle, TSharedPtr<FSlateImageBrush>> RegisteredBrush;
 };
 SLATE_IMPLEMENT_WIDGET(SUIDatasourceDebuggerTreeViewItem);
 
@@ -660,10 +635,21 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 	{
 		FUIDatasource* Datasource = Node->Handle.Get();
 		const EUIDatasourceValueType ValueType = Datasource->Value.GetType();
+		const FEdGraphPinType PinType = UIDatasourceEditorHelpers::GetPinTypeForDescriptor({
+			.Type = ValueType
+		});
+		const UEdGraphSchema_K2* Schema = GetDefault<UEdGraphSchema_K2>();
 		return ValueType == EUIDatasourceValueType::Void
 		? SNullWidget::NullWidget
-		: SNew(STextBlock)
-			.Text(FUIArrayDatasource::IsArray(Datasource) ? INVTEXT("Array") : UEnum::GetDisplayValueAsText(ValueType));
+		: SNew(SHorizontalBox)
+			+SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SImage)
+					.Visibility(FUIArrayDatasource::IsArray(Datasource) ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
+					.Image(FBlueprintEditorUtils::GetIconFromPin(PinType, true))
+					.ColorAndOpacity(Schema->GetPinTypeColor(PinType))
+			]
+			+SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[SNew(STextBlock).Text(FUIArrayDatasource::IsArray(Datasource) ? INVTEXT("Array") : UEnum::GetDisplayValueAsText(ValueType))];
 	}
 
 	if(InColumnName == NAME_Value)
@@ -724,8 +710,50 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 			{
 				Datasource->Set(Text.ToString());
 			});
-		case EUIDatasourceValueType::Image:
-			break;
+			case EUIDatasourceValueType::Image:
+			
+			return SNew(SHorizontalBox)
+				+SHorizontalBox::Slot().MaxWidth(32.0f)
+				[
+					SNew(SImage).Image_Lambda([Datasource, this]()
+					{
+						TSoftObjectPtr Image = Datasource->Get<FUIDatasourceImage>().Image;
+						return this->FindOrCreateImageBrush(Datasource, Image);
+					})
+				]
+				+SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SNew(SComboButton)
+					.OnGetMenuContent_Lambda( [Datasource]() -> TSharedRef<SWidget>
+					{
+						TSoftObjectPtr Image = Datasource->Get<FUIDatasourceImage>().Image;
+						return PropertyCustomizationHelpers::MakeAssetPickerWithMenu(FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(Image.ToSoftObjectPath()),
+																		 true,
+																		 {
+																	 		UMaterialInstance::StaticClass(),
+																	 		UTexture::StaticClass(),
+																		 },
+																		 {},
+																		 {},
+																		 nullptr,
+																		 FOnAssetSelected::CreateLambda([Datasource](const struct FAssetData& AssetData)
+																		 {
+																	 		FUIDatasourceImage Image;
+																	 		Image.Image = AssetData.GetSoftObjectPath();
+																			Datasource->Set(Image);
+																		 }),
+																		 FSimpleDelegate::CreateLambda([]() {}));
+					} )
+					.ButtonContent()
+					[
+						SNew(STextBlock)
+						.Text_Lambda([Datasource]()
+						{
+							TSoftObjectPtr Image = Datasource->Get<FUIDatasourceImage>().Image;
+							return FText::AsCultureInvariant(Image.ToString());
+						})
+					]
+				];
 		case EUIDatasourceValueType::GameplayTag:
 			break;
 		case EUIDatasourceValueType::Archetype:
@@ -736,6 +764,20 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 	}
 	
 	return SNullWidget::NullWidget;
+}
+
+const FSlateBrush* SUIDatasourceDebuggerTreeViewItem::FindOrCreateImageBrush(FUIDatasource* Datasource, const TSoftObjectPtr<UObject>& Image)
+{
+	FUIDatasourceHandle Handle = Datasource;
+	if(TSharedPtr<FSlateImageBrush>* Brush = RegisteredBrush.Find(Handle))
+	{
+		(*Brush)->SetResourceObject(Image.LoadSynchronous());
+		return Brush->Get();
+	}
+
+	TSharedPtr<FSlateImageBrush> Brush = MakeShareable<FSlateImageBrush>(new FSlateImageBrush(Image.LoadSynchronous(), FVector2D{32.0, 32.0}));
+	RegisteredBrush.Add(Handle, Brush);
+	return Brush.Get();
 }
 
 TSharedRef<ITableRow> SUIDatasourceDebugger::DebuggerTreeView_GenerateRow(FUIDatasourceNodePtr InDatasource, const TSharedRef<STableViewBase>& InOwningTable)
@@ -907,8 +949,6 @@ FName FUIDatasourceStyle::StyleName = "UIDatasourceStyle";
 FUIDatasourceStyle::FUIDatasourceStyle()
 	: FSlateStyleSet(StyleName)
 {
-#define COLOR(Str) FLinearColor::FromSRGBColor(FColor::FromHex(Str)) 
-
 	FButtonStyle CollapsibleButton = FButtonStyle()
 		.SetNormal(FSlateColorBrush(COLOR("2B2B2B")))
 		.SetHovered(FSlateColorBrush(COLOR("414141")))
@@ -919,8 +959,6 @@ FUIDatasourceStyle::FUIDatasourceStyle()
 		.SetFont(DEFAULT_FONT("Regular", 12))
 		.SetColorAndOpacity(FSlateColor(COLOR("FFFFFF")));
 	Set("Normal", NormalTextStyle);
-	
-#undef COLOR
 	
 	FSlateStyleRegistry::RegisterSlateStyle(*this);
 }
@@ -934,9 +972,10 @@ void FUIDatasourceEditorModule::OnPatchComplete()
 {
 	if(auto Debugger = DatasourceDebuggerPtr.Pin())
 	{
-		StaticCastSharedPtr<SDockTab>(Debugger->GetParentWidget())->RequestCloseTab();
-		FSpawnTabArgs Args(nullptr, FTabId());
-		SpawnDatasourceDebugger(Args);
+		// @NOTE: This is broken, bring back when we figure out of to properly reload the slate tab of the debugger
+		// StaticCastSharedPtr<SDockTab>(Debugger->GetParentWidget())->RequestCloseTab();
+		// FSpawnTabArgs Args(nullptr, FTabId());
+		// SpawnDatasourceDebugger(Args);
 	}
 }
 

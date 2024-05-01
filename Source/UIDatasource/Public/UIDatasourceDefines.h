@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Logging/LogMacros.h"
+
 UIDATASOURCE_API DECLARE_LOG_CATEGORY_EXTERN(LogDatasource, Log, All);
 
 #define WITH_UIDATASOURCE_DEBUG 1

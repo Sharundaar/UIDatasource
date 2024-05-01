@@ -109,17 +109,18 @@ void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandl
 {
 	if(InHandle != Handle)
 	{
-		IUIDatasourceEventHandler* EvtHandler = Cast<IUIDatasourceEventHandler>(GetUserWidget());
-		if(EvtHandler)
+		UUserWidget* UserWidget = GetUserWidget();
+		const bool bUserWidgetImplementsEventHandler = UserWidget->Implements<UUIDatasourceEventHandler>(); 
+		if(UserWidget && bUserWidgetImplementsEventHandler)
 		{
-			EvtHandler->NativeOnDatasourceChanging(InHandle);
+			IUIDatasourceEventHandler::Execute_BP_OnDatasourceChanging(UserWidget, InHandle);
 		}
 		const FUIDatasourceHandle OldHandle = Handle;
 		Handle = InHandle;
 		UpdateBindings(OldHandle, Handle); // @NOTE: It's important that Handle has the right value, as binds might do something with it
-		if(EvtHandler)
+		if(UserWidget && bUserWidgetImplementsEventHandler)
 		{
-			EvtHandler->NativeOnDatasourceChanged(Handle);
+			IUIDatasourceEventHandler::Execute_BP_OnDatasourceChanged(UserWidget, InHandle);
 		}
 	}
 }
@@ -140,6 +141,7 @@ UUIDatasourceUserWidgetExtension* UUIDatasourceUserWidgetExtension::RegisterData
 	if(!Extension)
 	{
 		Extension = UserWidget->AddExtension<UUIDatasourceUserWidgetExtension>();
+		Extension->SetFlags(RF_Transient);
 	}
 	return Extension;
 }

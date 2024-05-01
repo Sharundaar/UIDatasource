@@ -6,6 +6,7 @@
 #include "UIDatasource.h"
 #include "K2Node_UIDatasourceSingleBinding.generated.h"
 
+enum class EUIDatasourceImageType : uint8;
 class UUIDatasourceArchetype;
 
 UCLASS()
@@ -35,8 +36,11 @@ public:
 	UPROPERTY(EditAnywhere)
 	EUIDatasourceValueType Type;
 	
-	UPROPERTY(EditAnywhere, meta=(EditCondition="Type==EUIDatasourceValueType::Enum", EditConditionHides))
+	UPROPERTY(EditAnywhere, meta=(EditCondition="Type==EUIDatasourceValueType::Enum", EditConditionHides, GetOptions="UIDatasource.UIDatasourceArchetype.GetEnumChoices"))
 	FString EnumPath;
+
+	UPROPERTY(EditAnywhere, meta=(EditCondition="Type==EUIDatasourceValueType::Image", EditConditionHides))
+	EUIDatasourceImageType ImageType;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<const UUIDatasourceArchetype> SourceArchetype;

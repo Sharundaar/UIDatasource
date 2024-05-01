@@ -4,6 +4,7 @@
 
 #include "UIDatasource.h"
 #include "UIDatasourceMonitor.h"
+#include "Subsystems/EngineSubsystem.h"
 
 #include "UIDatasourceSubsystem.generated.h"
 
@@ -40,7 +41,7 @@ public:
 
 	void DestroyDatasource(FUIDatasource* Datasource);
 
-	int Num() const { return AllocatedCount; };
+	int32 Num() const { return AllocatedCount; };
 	static constexpr int Capacity() { return ChunkSize; }
 	
 protected:
