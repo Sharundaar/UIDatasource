@@ -12,12 +12,14 @@ At its core this plugin provides a simple way to implement UI that reacts to dat
 We're defining a Datasource as a node in a tree that we can declare with a path, for example "Player.Stats.Health" would define 3 datasources named "Player", "Stats", and "Health". Those would be link with Player being Stats parent, and Stats being Health parent.
 We could also declare "Player.Name", which would define the "Name" datasoure with Player has Parent, and Stats as an immediate sibling.
 
+```
 Root
 ├ Player ┬ Stats ┬ Health: 100
 │        │       └ Energy: 50
 │        └ Name: Sharundaar
 └ Group  ┬ ....
          ┆
+```
 
 We end up with a tree where each node can be seen as a structure that contains named member variables and other structures. We can then assign a node of the tree to a widget, and the widget will resolve its binding from the runtime shape of the structure, allowing graceful failure in case a binding fails.
 
@@ -44,7 +46,7 @@ We can then assign the datasource to any user widget. It'll automatically regist
 
 We can also generate the datasource given a root from C++ :
 
-```
+```cpp
 UENUM(BlueprintType)
 enum class EItemTier : uint8
 {
