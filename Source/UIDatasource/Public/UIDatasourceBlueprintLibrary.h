@@ -75,13 +75,13 @@ public:
 	// Collect all datasource child of the ArrayHandle parameter into an unreal Array
 	// [PadArrayUpTo] : optionally to ensure the resulting array has at least PadArrayUpTo elements
 	// [KeepNumMultipleOf] : optionally to ensure the resulting array has a number of element a multiple of KeepNumMultipleOf
-	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Array", meta=(AdvancedDisplay=2))
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Array", meta=(AdvancedDisplay=1))
 	static TArray<FUIDatasourceHandle> ArrayDatasource_ToArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo = 0, int32 KeepNumMultipleOf = 0);
 
 	// Similar to Array Datasource To Array, but wrap all datasource into a UObject, useful for ListView and consort
 	// [PadArrayUpTo] : optionally to ensure the resulting array has at least PadArrayUpTo elements
 	// [KeepNumMultipleOf] : optionally to ensure the resulting array has a number of element a multiple of KeepNumMultipleOf
-	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Object Array", meta=(AdvancedDisplay=2))
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Object Array", meta=(AdvancedDisplay=1))
 	static TArray<UUIDatasourceWrapper*> ArrayDatasource_ToObjectArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo = 0, int32 KeepNumMultipleOf = 0);
 	
 	// Returns the child at Index of the passed array datasource, returns invalid datasource if not in range
