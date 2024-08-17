@@ -12,6 +12,14 @@
 
 DECLARE_DYNAMIC_DELEGATE_OneParam(FUIDatasourceChangedDelegate, FUIDatasourceHandle, Handle);
 
+// Represents the type of binding we operate with regard to a datasource
+UENUM(BlueprintType)
+enum class EDatasourceBindType : uint8
+{
+	Self, // Binds to the datasource assigned to a widget
+	Global, // Binds to a global datasource directly parented to the root
+};
+
 UINTERFACE(BlueprintType)
 class UIDATASOURCE_API UUIDatasourceEventHandler : public UInterface
 {
@@ -39,6 +47,7 @@ struct FUIDataBind
 {
 	FOnDatasourceChangedDelegateBP Bind;
 	FString Path;
+	EDatasourceBindType BindType;
 };
 
 UCLASS()
@@ -65,11 +74,13 @@ public:
 	void UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle);
 	void AddBinding(const FUIDataBind& Binding);
 	
+	virtual void Construct() override;
 	virtual void Destruct() override;
 
 protected:
 	FUIDatasourceHandle Handle;
 	TArray<FUIDataBind> Bindings;
+	TArray<FUIDataBind> GlobalBindings;
 };
 
 USTRUCT()
@@ -83,6 +94,9 @@ struct UIDATASOURCE_API FUIDataBindTemplate
 	UPROPERTY()
 	FString Path = {};
 
+	UPROPERTY()
+	EDatasourceBindType BindType = EDatasourceBindType::Self;
+	
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
 	FUIDatasourceDescriptor Descriptor;

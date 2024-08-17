@@ -1,8 +1,10 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceSubsystem.h"
 
 #include "..\Public\UIDatasourceMonitor.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceSubsystem)
 
 #if WITH_DATASOURCE_DEBUG_IMGUI
 #include "imgui.h"
@@ -88,7 +90,7 @@ FUIDatasource* FUIDatasourcePool::GetRootDatasource()
 
 const FUIDatasource* FUIDatasourcePool::GetRootDatasource() const
 {
-	return &Datasources[ToIndex(EUIDatasourceId::Header)];
+	return &Datasources[ToIndex(EUIDatasourceId::Root)];
 }
 
 const FUIDatasource* FUIDatasourcePool::GetDatasourceById(EUIDatasourceId Id) const

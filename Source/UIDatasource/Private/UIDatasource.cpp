@@ -3,6 +3,8 @@
 #include "UIDatasource.h"
 #include "UIDatasourceSubsystem.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasource)
+
 namespace UIDatasourceHelpers
 {
 	FName GetDisplayName(FName Base, int32 Index)
@@ -88,6 +90,28 @@ FUIDatasource* FUIArrayDatasource::Append()
 	return nullptr; // @NOTE: Pool is full...
 }
 
+FUIDatasource* FUIArrayDatasource::AppendFront()
+{
+	FUIDatasourcePool* Pool = GetPool();
+	const int32 Num = GetNum();
+	const FName ChildName = UIDatasourceHelpers::GetDisplayName(ItemBaseName, Num);
+	if(FUIDatasource* Child = Pool->FindOrCreateChildDatasource(this, ChildName))
+	{
+		for(FUIDatasource* ChildIt = Pool->GetDatasourceById(FirstChild); ChildIt; ChildIt = Pool->GetDatasourceById(ChildIt->NextSibling))
+		{
+			if (ChildIt->Name.IsEqual(ItemBaseName, ENameCase::IgnoreCase, false))
+			{
+				ChildIt->Name.SetNumber(ChildIt->Name.GetNumber()+1);
+			}
+		}
+		Child->Name = UIDatasourceHelpers::GetDisplayName(ItemBaseName, 0);
+		
+		Set(Num + 1);
+		return Child;
+	}
+	return nullptr; // @NOTE: Pool is full...
+}
+
 void FUIArrayDatasource::Empty(bool bDestroyChildren)
 {
 	if(bDestroyChildren)
@@ -110,7 +134,11 @@ FUIDatasource* FUIArrayDatasource::GetChildAt(int32 Index) const
 
 FUIArrayDatasource* FUIArrayDatasource::Make(FUIDatasource* Datasource, bool bDestroyChildren)
 {
-	check(Datasource);
+	if (!Datasource)
+	{
+		return nullptr;
+	}
+	
 	EnumAddFlags(Datasource->Flags, EUIDatasourceFlag::IsArray);
 	FUIArrayDatasource* Array = static_cast<FUIArrayDatasource*>(Datasource);
 	Array->Empty(bDestroyChildren);

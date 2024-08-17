@@ -49,6 +49,12 @@ struct FUIDatasourceDescriptor
 	UPROPERTY(EditAnywhere, meta=(EditConditionHides, EditCondition="Type==EUIDatasourceValueType::Archetype"))
 	EUIDatasourceArchetypeImportMethod ImportMethod = EUIDatasourceArchetypeImportMethod::AsChild;
 
+#if WITH_EDITORONLY_DATA
+	// Semantic comment to help understand what the field expects to contain, unavailable in ship
+	UPROPERTY(EditAnywhere)
+	FString DevComment;
+#endif
+	
 	bool IsInlineArchetype() const
 	{
 		return Archetype && ImportMethod == EUIDatasourceArchetypeImportMethod::Inline;
@@ -79,7 +85,7 @@ public:
 	static TArray<FString> GetEnumChoices();
 	
 protected:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, meta=(TitleProperty="Path"))
 	TArray<FUIDatasourceDescriptor> Children;
 
 	static TArray<FName> MockNameSource;

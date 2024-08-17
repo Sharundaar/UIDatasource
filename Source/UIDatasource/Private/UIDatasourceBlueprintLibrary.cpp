@@ -1,9 +1,11 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceBlueprintLibrary.h"
 
 #include "UIDatasource.h"
 #include "UIDatasourceSubsystem.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceBlueprintLibrary)
 
 FUIDatasourceHandle UUIDatasourceBlueprintLibrary::FindOrCreateDatasource(FUIDatasourceHandle Parent, FString Path)
 {
@@ -144,6 +146,15 @@ FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_Append(FUIDat
 	return {};
 }
 
+FUIDatasourceHandle UUIDatasourceBlueprintLibrary::ArrayDatasource_AppendFront(FUIDatasourceHandle ArrayHandle)
+{
+	if(FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(ArrayHandle.Get()))
+	{
+		return ArrayDatasource->AppendFront();
+	}
+	return {};
+}
+
 template<typename T>
 T GetDatasourceValue(FUIDatasourceHandle Handle)
 {
@@ -188,6 +199,7 @@ IMPL_LIB_FUNC(FText,		Text);
 IMPL_LIB_FUNC(FUIDatasourceImage, Image)
 
 IMPL_LIB_FUNC(FGameplayTag, GameplayTag)
+IMPL_LIB_FUNC(FInstancedStruct, Struct)
 
 #undef IMPL_LIB_FUNC
 

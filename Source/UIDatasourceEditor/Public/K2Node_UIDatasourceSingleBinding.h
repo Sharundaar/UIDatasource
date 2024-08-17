@@ -4,6 +4,7 @@
 
 #include "K2Node.h"
 #include "UIDatasource.h"
+#include "UIDatasourceUserWidgetExtension.h"
 #include "K2Node_UIDatasourceSingleBinding.generated.h"
 
 enum class EUIDatasourceImageType : uint8;
@@ -30,18 +31,33 @@ public:
 	virtual FLinearColor GetNodeTitleColor() const override;
 
 public:
+	// Datasource path, relative to the BindType
 	UPROPERTY(EditAnywhere)
 	FString Path;
-	
+
+	// Self means the path is resolved from the datasource set on this widget, Global means the path is resolved from the root datasource
+	UPROPERTY(EditAnywhere)
+	EDatasourceBindType BindType = EDatasourceBindType::Self;
+
+	// Show the event kind pin, useful to resolve initial bind or value changed events differently
+	UPROPERTY(EditAnywhere)
+	bool bShowBindEventPin = false;
+
+	// Type of the datasource, automatically extract the inner data to the desired type
 	UPROPERTY(EditAnywhere)
 	EUIDatasourceValueType Type;
-	
+
+	// Enum held by the datasource
 	UPROPERTY(EditAnywhere, meta=(EditCondition="Type==EUIDatasourceValueType::Enum", EditConditionHides, GetOptions="UIDatasource.UIDatasourceArchetype.GetEnumChoices"))
 	FString EnumPath;
 
+	// Type of image in case of an Image datasource type
 	UPROPERTY(EditAnywhere, meta=(EditCondition="Type==EUIDatasourceValueType::Image", EditConditionHides))
 	EUIDatasourceImageType ImageType;
 
+	// Source Archetype, more for debugging purposes
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<const UUIDatasourceArchetype> SourceArchetype;
+
+	static FName PN_EventKind;
 };

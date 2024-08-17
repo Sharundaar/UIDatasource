@@ -1,4 +1,4 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "K2Node_UIDatasourceSingleBinding.h"
 
@@ -21,6 +21,8 @@
 #include "Materials/MaterialInstance.h"
 #include "Styling/AppStyle.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_UIDatasourceSingleBinding)
+
 namespace UK2Node_UIDatasourceSingleBinding_Local 
 {
 	FUIDatasourceDescriptor GenerateDescriptorForNode(const UK2Node_UIDatasourceSingleBinding* Node)
@@ -40,14 +42,15 @@ void UK2Node_UIDatasourceSingleBinding::CreateProperlyTypedModelOutputPin()
 {
 	Modify();
 
-	if (Pins.Num() > 1)
+	int32 HandlePinPosition = bShowBindEventPin ? 2 : 1;
+	if (Pins.Num() > HandlePinPosition)
 	{
-		Pins.RemoveAt(1, 1, false);
+		Pins.RemoveAt(HandlePinPosition, 1, false);
 	}
 
 	FEdGraphPinType PinType = UIDatasourceEditorHelpers::GetPinTypeForDescriptor(UK2Node_UIDatasourceSingleBinding_Local::GenerateDescriptorForNode(this));
 
-	CreatePin(EGPD_Output, PinType, *Path, 1);
+	CreatePin(EGPD_Output, PinType, *Path, HandlePinPosition);
 
 	// Notify the graph that the node has been changed
 	if (UEdGraph* Graph = GetGraph())
@@ -56,9 +59,15 @@ void UK2Node_UIDatasourceSingleBinding::CreateProperlyTypedModelOutputPin()
 	}
 }
 
+FName UK2Node_UIDatasourceSingleBinding::PN_EventKind = "EventKind";
+
 void UK2Node_UIDatasourceSingleBinding::AllocateDefaultPins()
 {
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Then);
+	if (bShowBindEventPin)
+	{
+		CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Byte, StaticEnum<EUIDatasourceChangeEventKind>(), PN_EventKind);
+	}
 	CreateProperlyTypedModelOutputPin();
 	
 	Super::AllocateDefaultPins();
@@ -103,6 +112,7 @@ void UK2Node_UIDatasourceSingleBinding::ExpandNode(FKismetCompilerContext& Compi
 	check(EventNode->CanSplitPin(EventArgsPin));
 	EventArgsPin->GetSchema()->SplitPin(EventArgsPin, false);
 	UEdGraphPin* HandlePin = EventArgsPin->SubPins[1];
+	checkf(HandlePin->PinType.PinCategory == UEdGraphSchema_K2::PC_Struct && HandlePin->PinType.PinSubCategoryObject == FUIDatasourceHandle::StaticStruct(), TEXT("If this hits, probably means FUIDatasourceChangeEventArgs field order changed."));
 	
 	const bool bNeitherNoneOrArchetypeType = !(Type == EUIDatasourceValueType::Void || Type == EUIDatasourceValueType::Archetype);
 	if (bNeitherNoneOrArchetypeType)
@@ -127,8 +137,16 @@ void UK2Node_UIDatasourceSingleBinding::ExpandNode(FKismetCompilerContext& Compi
 		}
 	}
 
+	if (bShowBindEventPin)
+	{
+		CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(PN_EventKind), *EventArgsPin->SubPins[0]);	
+	}
+	
 	checkf(HandlePin, TEXT("HandlePin should be the output of the built graph previously, so we can reconnect to the rest of the ubergraph."));
-	CompilerContext.MovePinLinksToIntermediate(*Pins[1], *HandlePin);
+
+	const int32 OutputPin = bShowBindEventPin ? 2 : 1;
+	ensureMsgf(Pins.IsValidIndex(OutputPin), TEXT("OutputPin here should be valid and point to the typed pin we created for the datasource data."));
+	CompilerContext.MovePinLinksToIntermediate(*Pins[bShowBindEventPin ? 2 : 1], *HandlePin);
 }
 
 FSlateIcon UK2Node_UIDatasourceSingleBinding::GetIconAndTint(FLinearColor& OutColor) const
@@ -279,6 +297,11 @@ void UK2Node_UIDatasourceSingleBinding::PostEditChangeProperty(FPropertyChangedE
 		|| PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(UK2Node_UIDatasourceSingleBinding, EnumPath))
 	{
 		CreateProperlyTypedModelOutputPin();
+	}
+
+	if(PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(UK2Node_UIDatasourceSingleBinding, bShowBindEventPin))
+	{
+		ReconstructNode();
 	}
 }
 

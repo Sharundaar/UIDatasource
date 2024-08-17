@@ -1,9 +1,11 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceUserWidgetExtension.h"
 
 #include "UIDatasourceSubsystem.h"
 #include "Blueprint/UserWidget.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceUserWidgetExtension)
 
 void IUIDatasourceEventHandler::NativeOnDatasourceChanging(FUIDatasourceHandle Handle)
 {
@@ -45,10 +47,33 @@ void UUIDatasourceUserWidgetExtension::UpdateBindings(FUIDatasourceHandle OldHan
 
 void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 {
-	Bindings.Add(Binding);
-	if(FUIDatasource* OwnDatasource = Handle.Get())
+
+	if(Binding.BindType == EDatasourceBindType::Self)
 	{
-		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
+		Bindings.Add(Binding);
+		if(FUIDatasource* OwnDatasource = Handle.Get())
+		{
+			if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
+			{
+				Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
+				// ReSharper disable once CppExpressionWithoutSideEffects
+				Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
+			}
+		}
+	}
+
+	if(Binding.BindType == EDatasourceBindType::Global)
+	{
+		GlobalBindings.Add(Binding);
+	}
+}
+
+void UUIDatasourceUserWidgetExtension::Construct()
+{
+	// Resolve any global bindings here
+	for (FUIDataBind& Binding : GlobalBindings)
+	{
+		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
 		{
 			Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
 			// ReSharper disable once CppExpressionWithoutSideEffects
@@ -60,6 +85,14 @@ void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 void UUIDatasourceUserWidgetExtension::Destruct()
 {
 	SetDatasource({});
+
+	for (FUIDataBind& Binding : GlobalBindings)
+	{
+		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
+		{
+			Datasource->OnDatasourceChanged.Remove(Binding.Bind);
+		}	
+	}
 }
 
 void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget* UserWidget)
@@ -74,7 +107,8 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget
 			Delegate.BindUFunction(UserWidget, Binding.BindDelegateName);
 			DatasourceExtension->AddBinding({
 				Delegate,
-				Binding.Path
+				Binding.Path,
+				Binding.BindType,
 			});
 		}
 	}
@@ -127,16 +161,24 @@ void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandl
 
 void UUIDatasourceUserWidgetExtension::SetUserWidgetDatasource(UUserWidget* UserWidget, FUIDatasourceHandle Handle)
 {
-	RegisterDatasourceExtension(UserWidget)->SetDatasource(Handle);
+	if (UserWidget)
+	{
+		RegisterDatasourceExtension(UserWidget)->SetDatasource(Handle);
+	}
 }
 
 FUIDatasourceHandle UUIDatasourceUserWidgetExtension::GetUserWidgetDatasource(UUserWidget* UserWidget)
 {
-	return RegisterDatasourceExtension(UserWidget)->GetDatasource();
+	return UserWidget ? RegisterDatasourceExtension(UserWidget)->GetDatasource() : FUIDatasourceHandle{};
 }
 
 UUIDatasourceUserWidgetExtension* UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UUserWidget* UserWidget)
 {
+	if (!UserWidget)
+	{
+		return nullptr;
+	}
+	
 	UUIDatasourceUserWidgetExtension* Extension = UserWidget->GetExtension<UUIDatasourceUserWidgetExtension>();
 	if(!Extension)
 	{

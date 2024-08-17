@@ -24,9 +24,12 @@ public:
 	UFUNCTION(BlueprintPure, meta=(CompactNodeTitle="GET"))
 	FUIDatasourceHandle GetHandle() const { return Handle; }
 
+	UFUNCTION(BlueprintCallable, meta=(CompactNodeTitle="SET"))
 	void SetHandle(FUIDatasourceHandle InHandle) { Handle = InHandle; }
 	
 protected:
+	// Handle held by this wrapper
+	UPROPERTY(VisibleAnywhere)
 	FUIDatasourceHandle Handle;
 };
 
@@ -75,13 +78,13 @@ public:
 	// Collect all datasource child of the ArrayHandle parameter into an unreal Array
 	// [PadArrayUpTo] : optionally to ensure the resulting array has at least PadArrayUpTo elements
 	// [KeepNumMultipleOf] : optionally to ensure the resulting array has a number of element a multiple of KeepNumMultipleOf
-	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Array", meta=(AdvancedDisplay=2))
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Array", meta=(AdvancedDisplay=1))
 	static TArray<FUIDatasourceHandle> ArrayDatasource_ToArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo = 0, int32 KeepNumMultipleOf = 0);
 
 	// Similar to Array Datasource To Array, but wrap all datasource into a UObject, useful for ListView and consort
 	// [PadArrayUpTo] : optionally to ensure the resulting array has at least PadArrayUpTo elements
 	// [KeepNumMultipleOf] : optionally to ensure the resulting array has a number of element a multiple of KeepNumMultipleOf
-	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Object Array", meta=(AdvancedDisplay=2))
+	UFUNCTION(BlueprintPure, Category=UIArrayDatasource, DisplayName="Array Datasource To Object Array", meta=(AdvancedDisplay=1))
 	static TArray<UUIDatasourceWrapper*> ArrayDatasource_ToObjectArray(FUIDatasourceHandle ArrayHandle, int32 PadArrayUpTo = 0, int32 KeepNumMultipleOf = 0);
 	
 	// Returns the child at Index of the passed array datasource, returns invalid datasource if not in range
@@ -92,6 +95,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category=UIArrayDatasource, DisplayName="Append")
 	static FUIDatasourceHandle ArrayDatasource_Append(FUIDatasourceHandle ArrayHandle);
 
+	// Append a datasource at the beginning of this array and returns it
+	UFUNCTION(BlueprintCallable, Category=UIArrayDatasource, DisplayName="Append Front")
+	static FUIDatasourceHandle ArrayDatasource_AppendFront(FUIDatasourceHandle ArrayHandle);
+	
 	// @formatter:off
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static int32		GetInt(FUIDatasourceHandle Handle);
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static uint8		GetIntAsByte(FUIDatasourceHandle Handle);
@@ -103,7 +110,8 @@ public:
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static FUIDatasourceImage GetImage(FUIDatasourceHandle Handle);
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static TSoftObjectPtr<UTexture2D> GetTexture(FUIDatasourceHandle Handle);
 	UFUNCTION(BlueprintPure, Category=UIDatasource) static TSoftObjectPtr<UMaterialInterface> GetMaterial(FUIDatasourceHandle Handle);
-	UFUNCTION(BlueprintPure, Category=UIDatasource) static FGameplayTag GetGameplayTag(FUIDatasourceHandle Handle);
+	UFUNCTION(BlueprintPure, Category=UIDatasource) static FGameplayTag     GetGameplayTag(FUIDatasourceHandle Handle);
+	UFUNCTION(BlueprintPure, Category=UIDatasource) static FInstancedStruct GetStruct(FUIDatasourceHandle Handle);
 
 	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetInt(FUIDatasourceHandle Handle, int32 Value);
 	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool	SetIntAsByte(FUIDatasourceHandle Handle, uint8 Value);
@@ -116,5 +124,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetTexture(FUIDatasourceHandle Handle, TSoftObjectPtr<UTexture2D> Value);
 	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetMaterial(FUIDatasourceHandle Handle, TSoftObjectPtr<UMaterialInterface> Value);
 	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetGameplayTag(FUIDatasourceHandle Handle, FGameplayTag Value);
+	UFUNCTION(BlueprintCallable, Category=UIDatasource) static bool SetStruct(FUIDatasourceHandle Handle, FInstancedStruct Value);
 	// @formatter:on
 };

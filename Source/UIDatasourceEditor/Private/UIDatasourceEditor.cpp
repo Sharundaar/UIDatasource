@@ -710,8 +710,7 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 			{
 				Datasource->Set(Text.ToString());
 			});
-			case EUIDatasourceValueType::Image:
-			
+		case EUIDatasourceValueType::Image:
 			return SNew(SHorizontalBox)
 				+SHorizontalBox::Slot().MaxWidth(32.0f)
 				[
@@ -754,6 +753,20 @@ TSharedRef<SWidget> SUIDatasourceDebuggerTreeViewItem::GenerateWidgetForColumn(c
 						})
 					]
 				];
+		case EUIDatasourceValueType::Struct:
+			return SNew(SEditableTextBox).Text_Lambda([Datasource]()
+			{
+				const FInstancedStruct& Value = Datasource->Get_Ref<FInstancedStruct>();
+				const UScriptStruct* ScriptStruct = Value.GetScriptStruct();
+				if(!ScriptStruct)
+				{
+					return INVTEXT("None");
+				}
+				
+				FString StrRep;
+				ScriptStruct->ExportText(StrRep, Value.GetMemory(), {}, nullptr, PPF_PropertyWindow, nullptr);
+				return FText::AsCultureInvariant(StrRep);
+			});
 		case EUIDatasourceValueType::GameplayTag:
 			break;
 		case EUIDatasourceValueType::Archetype:
@@ -871,6 +884,16 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 				}
 				
 				return FReply::Handled();
+			}) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ SNew(SButton).Text(INVTEXT("Reset Pool")).OnClicked_Lambda([this]()
+			{
+				FUIDatasourcePool& Pool = UUIDatasourceSubsystem::Get()->Pool;
+				FUIDatasource& Root = *Pool.GetRootDatasource();
+				for(FUIDatasource* Child = Pool.GetDatasourceById(Root.FirstChild); Child; Child = Pool.GetDatasourceById(Child->NextSibling))
+				{
+					Pool.DestroyDatasource(Child);
+				}
+				return FReply::Handled();	
 			}) ];
 
 	bStatBoxOpened = false;

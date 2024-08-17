@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameplayTagContainer.h"
+#include "InstancedStruct.h"
 #include "UIDatasourceDefines.h"
 #include "UIDatasourceHandle.h"
 #include "Engine/Texture2D.h"
@@ -28,6 +29,7 @@ enum class EUIDatasourceValueType : uint8
 	String,
 	Image,
 	GameplayTag,
+	Struct, // FInstancedStruct
 	Archetype, // @NOTE: This is for archetype UX purposes, devolves to Void at runtime
 };
 
@@ -57,7 +59,7 @@ struct FUIDatasourceImage
 struct FUIDatasourceValue
 {
 	struct FVoidType {};
-	using FValueType = TVariant<FVoidType, int32, float, bool, FName, FText, FString, FUIDatasourceImage, FGameplayTag>;
+	using FValueType = TVariant<FVoidType, int32, float, bool, FName, FText, FString, FUIDatasourceImage, FGameplayTag, FInstancedStruct>;
 
 	FValueType Value;
 
@@ -76,6 +78,7 @@ struct FUIDatasourceValue
 		if(Value.IsType<FString>())		return EUIDatasourceValueType::String;
 		if(Value.IsType<FUIDatasourceImage>()) return EUIDatasourceValueType::Image;
 		if(Value.IsType<FGameplayTag>()) return EUIDatasourceValueType::GameplayTag;
+		if(Value.IsType<FInstancedStruct>()) return EUIDatasourceValueType::Struct;
 		return EUIDatasourceValueType::Void;
 	}
 	
@@ -136,6 +139,23 @@ struct FUIDatasourceValue
 
 		UE_LOG(LogDatasource, Warning, TEXT("Tried to get a value of incompatible type (Found %llu, Expected %llu), returning default"), FValueType::IndexOfType<T>(), Value.GetIndex());
 		return {};
+	}
+
+	template<typename T>
+	const T& Get_Ref() const
+	{
+		UIDATASOURCE_FUNC_TRACE()
+
+		static_assert(FValueType::IndexOfType<T>() != static_cast<SIZE_T>(-1), "Tried to get datasource to invalid type.");
+		
+		if(Value.IsType<T>())
+		{
+			return Value.Get<T>();
+		}
+
+		UE_LOG(LogDatasource, Warning, TEXT("Tried to get a value of incompatible type (Found %llu, Expected %llu), returning default"), FValueType::IndexOfType<T>(), Value.GetIndex());
+		static T StaticObjectInstance = T {}; // this allows us to return an "invalid" ref
+		return StaticObjectInstance;
 	}
 	
 	template<typename T>
@@ -228,6 +248,12 @@ struct UIDATASOURCE_API FUIDatasource
 	}
 
 	template<typename T>
+	const T& Get_Ref() const
+	{
+		return Value.Get_Ref<T>();
+	}
+	
+	template<typename T>
 	T Get() const
 	{
 		return EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink) ? T{} : Value.Get<T>();
@@ -251,7 +277,8 @@ struct UIDATASOURCE_API FUIArrayDatasource : FUIDatasource
 	FUIArrayDatasource() = delete;
 	
 	int32 GetNum() const { return Get<int32>(); }
-	FUIDatasource* Append();
+	FUIDatasource* Append(); // Append a datasource to the end of the array
+	FUIDatasource* AppendFront(); // Append a datasource to the front of the array, reshuffle the IDs of subsequent elements
 	void Empty(bool bDestroyChildren = false);
 	FUIDatasource* GetChildAt(int32 Index) const;
 

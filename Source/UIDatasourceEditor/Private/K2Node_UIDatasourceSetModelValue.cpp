@@ -14,6 +14,8 @@
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Engine/Texture2D.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_UIDatasourceSetModelValue)
+
 bool UK2Node_UIDatasourceSetModelValue::CheckForErrors(const FKismetCompilerContext& CompilerContext)
 {
 	// @TODO: We should check for recursive errors and make sure all connected pins make sense...
@@ -244,7 +246,10 @@ void UK2Node_UIDatasourceSetModelValue::AllocateDefaultPins()
 		{
 			if (Child.IsInlineArchetype())
 			{
-				// @TODO: Support this case
+				for (const FUIDatasourceDescriptor& RecChild : Child.Archetype->GetDescriptors())
+				{
+					CreatedPin.Add({ GeneratePinForDescriptor(RecChild), RecChild });					
+				}
 			}
 			else
 			{
@@ -286,10 +291,23 @@ TArray<UK2Node_UIDatasourceSetModelValue::FPinData> UK2Node_UIDatasourceSetModel
 
 		for(const FUIDatasourceDescriptor& Elem : Descriptor.Archetype->GetDescriptors())
 		{
-			PinData.Add({
-				FindPinChecked(Elem.Path),
-				Elem,
-			});
+			if(Elem.IsInlineArchetype())
+			{
+				for (const FUIDatasourceDescriptor& RecChild : Elem.Archetype->GetDescriptors())
+				{
+					PinData.Add({
+						FindPinChecked(RecChild.Path),
+						RecChild,
+					});
+				}
+			}
+			else
+			{
+				PinData.Add({
+					FindPinChecked(Elem.Path),
+					Elem,
+				});
+			}
 		}
 		
 		return PinData;

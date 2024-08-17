@@ -13,6 +13,8 @@
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Engine/Texture2D.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_UIDatasourceGetModelValue)
+
 bool UK2Node_UIDatasourceGetModelValue::CheckForErrors(const FKismetCompilerContext& CompilerContext)
 {
 	// @TODO: We should check for recursive errors and make sure all connected pins make sense...
@@ -76,7 +78,7 @@ void UK2Node_UIDatasourceGetModelValue::ExpandNode(FKismetCompilerContext& Compi
 
 		UEdGraphPin* HandlePin = CurrentPinDatasourcePin;
 
-		if(PinDescriptor.Type != EUIDatasourceValueType::Archetype)
+		if(PinDescriptor.Type != EUIDatasourceValueType::Archetype && PinDescriptor.Type != EUIDatasourceValueType::Void)
 		{
 			UK2Node_CallFunction* GetDatasourceValueNode = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
 			GetDatasourceValueNode->FunctionReference = UIDatasourceEditorHelpers::GetGetterFunctionForDescriptor(PinDescriptor);
@@ -166,14 +168,17 @@ void UK2Node_UIDatasourceGetModelValue::AllocateDefaultPins()
 		Pins.RemoveAt(3, Pins.Num() - 3, false);
 	}
 
-	if (Descriptor.Type == EUIDatasourceValueType::Archetype && IsValid(Descriptor.Archetype))
+	if (Descriptor.Type == EUIDatasourceValueType::Archetype && IsValid(Descriptor.Archetype) && Descriptor.ImportMethod != EUIDatasourceArchetypeImportMethod::AsArray)
 	{
 		PreloadArchetypeAndDependencies(Descriptor.Archetype);
 		for (const FUIDatasourceDescriptor& Child : Descriptor.Archetype->GetDescriptors())
 		{
 			if (Child.IsInlineArchetype())
 			{
-				// @TODO: Support this case
+				for (const FUIDatasourceDescriptor& RecChild : Child.Archetype->GetDescriptors())
+				{
+					CreatedPin.Add({ GeneratePinForDescriptor(RecChild), RecChild });					
+				}
 			}
 			else
 			{
@@ -209,16 +214,29 @@ void UK2Node_UIDatasourceGetModelValue::PostEditChangeProperty(FPropertyChangedE
 
 TArray<UK2Node_UIDatasourceGetModelValue::FPinData> UK2Node_UIDatasourceGetModelValue::CollectCreatedPins() const
 {
-	if(Descriptor.Type == EUIDatasourceValueType::Archetype && Descriptor.Archetype)
+	if(Descriptor.Type == EUIDatasourceValueType::Archetype && Descriptor.Archetype && Descriptor.ImportMethod != EUIDatasourceArchetypeImportMethod::AsArray)
 	{
 		TArray<UK2Node_UIDatasourceGetModelValue::FPinData> PinData;
 
 		for(const FUIDatasourceDescriptor& Elem : Descriptor.Archetype->GetDescriptors())
 		{
-			PinData.Add({
-				FindPinChecked(Elem.Path, EGPD_Output),
-				Elem,
-			});
+			if(Elem.IsInlineArchetype())
+			{
+				for (const FUIDatasourceDescriptor& RecChild : Elem.Archetype->GetDescriptors())
+				{
+					PinData.Add({
+						FindPinChecked(RecChild.Path),
+						RecChild,
+					});
+				}
+			}
+			else
+			{
+				PinData.Add({
+					FindPinChecked(Elem.Path),
+					Elem,
+				});
+			}
 		}
 		
 		return PinData;

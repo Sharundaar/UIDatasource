@@ -1,9 +1,11 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceWidgetBlueprintExtension.h"
 
 #include "K2Node_UIDatasourceSingleBinding.h"
 #include "UIDatasourceUserWidgetExtension.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceWidgetBlueprintExtension)
 
 void UUIDatasourceWidgetBlueprintExtension::HandleBeginCompilation(FWidgetBlueprintCompilerContext& InCreationContext)
 {
@@ -31,6 +33,7 @@ void UUIDatasourceWidgetBlueprintExtension::HandleFinishCompilingClass(UWidgetBl
 				FUIDataBindTemplate Template;
 				Template.BindDelegateName = Node->GetGeneratedEventName();
 				Template.Path = Node->Path;
+				Template.BindType = Node->BindType;
 #if WITH_EDITORONLY_DATA
 				Template.Descriptor = {
 					Node->Path,

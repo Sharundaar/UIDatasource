@@ -24,5 +24,11 @@
 			"Type": "UncookedOnly",
 			"LoadingPhase": "PreDefault"
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "StructUtils",
+			"Enabled": true
+		}
 	]
 }

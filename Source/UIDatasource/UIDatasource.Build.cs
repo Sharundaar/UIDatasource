@@ -13,6 +13,7 @@ public class UIDatasource : ModuleRules
 			{
 				"Core",
 				"GameplayTags",
+				"StructUtils",
 			}
 		);
 			

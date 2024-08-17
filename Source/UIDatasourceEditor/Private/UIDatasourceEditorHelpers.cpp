@@ -50,6 +50,10 @@ FEdGraphPinType UIDatasourceEditorHelpers::GetPinTypeForDescriptor(const FUIData
 				PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
 			}
 			break;
+		case EUIDatasourceValueType::Struct:
+			PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+			PinType.PinSubCategoryObject = FInstancedStruct::StaticStruct();
+			break;
 		case EUIDatasourceValueType::Archetype:
 		case EUIDatasourceValueType::Void: // default to sending the datasource handle
 			PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
@@ -93,7 +97,9 @@ FMemberReference UIDatasourceEditorHelpers::GetGetterFunctionForDescriptor(const
 	case EUIDatasourceValueType::String:
 		GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetString);
 		break;
-		
+	case EUIDatasourceValueType::Struct:
+		GetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, GetStruct);
+		break;
 	case EUIDatasourceValueType::Archetype:
 	case EUIDatasourceValueType::Void:
 		checkf(false, TEXT("No possible getter function for descriptor type %d"), Descriptor.Type);
@@ -138,7 +144,9 @@ FMemberReference UIDatasourceEditorHelpers::GetSetterFunctionForDescriptor(const
 	case EUIDatasourceValueType::String:
 		SetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, SetString);
 		break;
-		
+	case EUIDatasourceValueType::Struct:
+		SetDatasourceValueFunctionName = GET_FUNCTION_NAME_CHECKED(UUIDatasourceBlueprintLibrary, SetStruct);
+		break;
 	case EUIDatasourceValueType::Archetype:
 	case EUIDatasourceValueType::Void:
 		checkf(false, TEXT("No possible setter function for descriptor type %d"), Descriptor.Type);

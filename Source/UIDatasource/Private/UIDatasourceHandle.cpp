@@ -1,8 +1,10 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceHandle.h"
 #include "UIDatasource.h"
 #include "UIDatasourceSubsystem.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceHandle)
 
 FUIDatasourceHandle::FUIDatasourceHandle(const FUIDatasource* Datasource)
 	: Id(Datasource ? UIDatasource_PackId(Datasource->Generation, Datasource->Id) : 0)

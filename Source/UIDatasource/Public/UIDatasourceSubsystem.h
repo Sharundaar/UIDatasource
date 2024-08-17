@@ -45,7 +45,7 @@ public:
 	static constexpr int Capacity() { return ChunkSize; }
 	
 protected:
-	static constexpr int ChunkSize = 2048;
+	static constexpr int ChunkSize = 4096;
 	TArray<FUIDatasource> Datasources = {};
 	int FirstFree = 0;
 	int AllocatedCount = 0;

@@ -1,9 +1,11 @@
-﻿// Copyright Sharundaar. All Rights Reserved.
+// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceArchetype.h"
 
 #include "UIDatasourceSubsystem.h"
 #include "UObject/UObjectIterator.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceArchetype)
 
 TArray<FName> UUIDatasourceArchetype::MockNameSource = { "Name1", "Name2", "Name3" };
 TArray<FString> UUIDatasourceArchetype::MockStringSource = { TEXT("String1"), TEXT("String2"), TEXT("String3") };
@@ -60,6 +62,9 @@ void UUIDatasourceArchetype::MockDatasource(FUIDatasource* Datasource) const
 				break;
 			case EUIDatasourceValueType::GameplayTag:
 				ChildDatasource->Set<FGameplayTag>({});
+				break;
+			case EUIDatasourceValueType::Struct:
+				ChildDatasource->Set<FInstancedStruct>({});
 				break;
 			case EUIDatasourceValueType::Archetype:
 				if(Descriptor.Archetype)
@@ -129,6 +134,9 @@ void UUIDatasourceArchetype::GenerateDatasource(FUIDatasource* Datasource) const
 				break;
 			case EUIDatasourceValueType::GameplayTag:
 				ChildDatasource->Set<FGameplayTag>({});
+				break;
+			case EUIDatasourceValueType::Struct:
+				ChildDatasource->Set<FInstancedStruct>({});
 				break;
 			case EUIDatasourceValueType::Archetype:
 				if(Descriptor.Archetype)
