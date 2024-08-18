@@ -64,11 +64,17 @@ void FUIDatasource::OnValueChanged() const
 {
 	UIDATASOURCE_FUNC_TRACE()
 
-	// UUIDatasourceSubsystem::Get()->Monitor.Log()
+#if WITH_UIDATASOURCE_MONITOR
+	UUIDatasourceSubsystem::Get()->Monitor.QueueDatasourceEvent({
+		EUIDatasourceChangeEventKind::ValueSet,
+		this
+	});
+#else
 	OnDatasourceChanged.Broadcast({
 		EUIDatasourceChangeEventKind::ValueSet,
 		this
 	});
+#endif
 }
 
 FUIDatasourcePool* FUIDatasource::GetPool() const

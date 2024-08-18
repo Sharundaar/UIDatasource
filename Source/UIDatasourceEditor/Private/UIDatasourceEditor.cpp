@@ -951,12 +951,16 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 		]
 	];
 
+#if WITH_UIDATASOURCE_MONITOR
 	MonitorEventHandle = UUIDatasourceSubsystem::Get()->Monitor.OnMonitorEvent.AddLambda([this]() { DebuggerTree->RequestTreeRefresh(); });
+#endif
 }
 
 SUIDatasourceDebugger::~SUIDatasourceDebugger()
 {
+#if WITH_UIDATASOURCE_MONITOR
 	UUIDatasourceSubsystem::Get()->Monitor.OnMonitorEvent.Remove(MonitorEventHandle);
+#endif
 	MonitorEventHandle.Reset();
 }
 

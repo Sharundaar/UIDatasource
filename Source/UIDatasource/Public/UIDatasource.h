@@ -8,6 +8,7 @@
 #include "UIDatasourceHandle.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInterface.h"
+#include "Templates/IsTriviallyCopyConstructible.h"
 
 #include "UIDatasource.generated.h"
 
@@ -203,7 +204,13 @@ struct FUIDatasourceChangeEventArgs
 
 	UPROPERTY(BlueprintReadOnly)
 	FUIDatasourceHandle Handle = {};
+
+	bool operator==(const FUIDatasourceChangeEventArgs& Other) const
+	{
+		return Kind == Other.Kind && Handle == Other.Handle;
+	}
 };
+static_assert(TIsTriviallyCopyConstructible<FUIDatasourceChangeEventArgs>::Value, "FUIDatasourceChangeEventArgs should be trivially constructible for fast copy");
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDatasourceChangedDelegate, FUIDatasourceChangeEventArgs, EventArgs);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnDatasourceChangedDelegateBP, FUIDatasourceChangeEventArgs, EventArgs);
@@ -222,7 +229,10 @@ struct UIDATASOURCE_API FUIDatasource
 
 	EUIDatasourceFlag Flags;
 	FUIDatasourceValue Value;
+
+#if !WITH_UIDATASOURCE_MONITOR
 	FOnDatasourceChangedDelegate OnDatasourceChanged;
+#endif
 
 	FUIDatasourcePool* GetPool() const;
 
@@ -238,8 +248,12 @@ struct UIDATASOURCE_API FUIDatasource
 	template<typename T>
 	bool Set(T InValue)
 	{
-		if(!EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink)
-			&& Value.Set<T>(InValue))
+		if(UNLIKELY(EnumHasAllFlags(Flags, EUIDatasourceFlag::IsSink)))
+		{
+			return false;
+		}
+		
+		if(Value.Set<T>(InValue))
 		{
 			OnValueChanged();
 			return true;

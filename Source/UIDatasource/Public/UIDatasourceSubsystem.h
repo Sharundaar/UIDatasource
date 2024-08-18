@@ -8,9 +8,6 @@
 
 #include "UIDatasourceSubsystem.generated.h"
 
-#define WITH_DATASOURCE_DEBUG_IMGUI 0
-#define WITH_UIDATASOURCE_MONITOR		1
-
 struct UIDATASOURCE_API FUIDatasourcePool
 {	
 public:
@@ -78,6 +75,7 @@ public:
 	FUIDatasourcePool Pool;
 #if WITH_UIDATASOURCE_MONITOR
 	FUIDatasourceMonitor Monitor;
+	FDelegateHandle SlatePreTickHandle;
 #endif
 
 protected:

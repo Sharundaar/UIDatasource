@@ -350,6 +350,9 @@ void UUIDatasourceSubsystem::LogDatasourceChange(FUIDatasourceLogEntry Change)
 void UUIDatasourceSubsystem::Deinitialize()
 {
 	Pool.Clear();
+#if WITH_UIDATASOURCE_MONITOR
+	Monitor.Clear();
+#endif
 }
 
 void UUIDatasourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -359,6 +362,14 @@ void UUIDatasourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		checkf(!Instance, TEXT("An instance of UIDatasourceSubsystem was already registered."));
 		Instance = this;
 		Pool.Initialize();
+#if WITH_UIDATASOURCE_MONITOR
+		// PreTick should happen right before the widget hierarchy is drawn, and right after the game itself Tick (in most situations)
+		// so it should be appropriate to process all datasource events right now
+		SlatePreTickHandle = FSlateApplication::Get().OnPreTick().AddWeakLambda(this, [this](float /*Delta*/)
+		{
+			Monitor.ProcessEvents();
+		});
+#endif
 	}
 }
 

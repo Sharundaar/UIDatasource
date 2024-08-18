@@ -26,7 +26,11 @@ void UUIDatasourceUserWidgetExtension::UpdateBindings(FUIDatasourceHandle OldHan
 		{
 			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(OldDatasource, Bind.Path))
 			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Bind.Bind);
+#else
 				Datasource->OnDatasourceChanged.Remove(Bind.Bind);
+#endif
 			}
 		}
 	}
@@ -37,7 +41,12 @@ void UUIDatasourceUserWidgetExtension::UpdateBindings(FUIDatasourceHandle OldHan
 		{
 			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(NewDatasource, Bind.Path))
 			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Bind.Bind);
+#else
 				Datasource->OnDatasourceChanged.Add(Bind.Bind);
+#endif
+				
 				// ReSharper disable once CppExpressionWithoutSideEffects
 				Bind.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
 			}
@@ -55,7 +64,12 @@ void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 		{
 			if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
 			{
-				Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
+#else
+				Datasource->OnDatasourceChanged.Add(Binding.Bind);
+#endif
+				
 				// ReSharper disable once CppExpressionWithoutSideEffects
 				Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
 			}
@@ -75,7 +89,12 @@ void UUIDatasourceUserWidgetExtension::Construct()
 	{
 		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
 		{
-			Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
+#if WITH_UIDATASOURCE_MONITOR
+			UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
+#else
+			Datasource->OnDatasourceChanged.Add(Binding.Bind);
+#endif
+
 			// ReSharper disable once CppExpressionWithoutSideEffects
 			Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
 		}
@@ -90,7 +109,11 @@ void UUIDatasourceUserWidgetExtension::Destruct()
 	{
 		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
 		{
+#if WITH_UIDATASOURCE_MONITOR
+			UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Binding.Bind);
+#else
 			Datasource->OnDatasourceChanged.Remove(Binding.Bind);
+#endif
 		}	
 	}
 }
