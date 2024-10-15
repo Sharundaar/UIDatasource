@@ -83,11 +83,11 @@ UCLASS()
 class UIDATASOURCE_API UUIDatasourceListView : public UListViewBase, public ITypedUMGListView<FUIDatasourceHandle>
 {
 	GENERATED_BODY()
-
+	
+public:
 	UUIDatasourceListView(const FObjectInitializer& ObjectInitializer);
 	IMPLEMENT_TYPED_UMG_LIST(FUIDatasourceHandle, MyListView)
 
-public:
 	UFUNCTION()
 	void OnDatasourceChanged(FUIDatasourceChangeEventArgs EventArgs);
 
