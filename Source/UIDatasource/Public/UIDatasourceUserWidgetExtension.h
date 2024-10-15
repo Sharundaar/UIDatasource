@@ -50,6 +50,17 @@ struct FUIDataBind
 	EDatasourceBindType BindType;
 };
 
+struct UIDATASOURCE_API FUIDatasourceLink
+{
+	FUIDatasourceHandle Handle;
+	TArray<FUIDataBind> Bindings;
+	TArray<FUIDataBind> GlobalBindings;
+
+	void UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle);
+	void AddBinding(const FUIDataBind& Binding);
+	void LinkGlobalBindings(bool bLink);
+};
+
 UCLASS()
 class UIDATASOURCE_API UUIDatasourceUserWidgetExtension : public UUserWidgetExtension
 {
@@ -57,7 +68,7 @@ class UIDATASOURCE_API UUIDatasourceUserWidgetExtension : public UUserWidgetExte
 
 public:
 	UFUNCTION(BlueprintPure)
-	FUIDatasourceHandle GetDatasource() const { return Handle; }
+	FUIDatasourceHandle GetDatasource() const { return Linker.Handle; }
 	
 	UFUNCTION(BlueprintCallable)
 	void SetDatasource(FUIDatasourceHandle InHandle);
@@ -71,16 +82,13 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(DefaultToSelf=UserWidget))
 	static UUIDatasourceUserWidgetExtension* RegisterDatasourceExtension(UUserWidget* UserWidget);
 	
-	void UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle);
 	void AddBinding(const FUIDataBind& Binding);
 	
 	virtual void Construct() override;
 	virtual void Destruct() override;
 
 protected:
-	FUIDatasourceHandle Handle;
-	TArray<FUIDataBind> Bindings;
-	TArray<FUIDataBind> GlobalBindings;
+	FUIDatasourceLink Linker;
 };
 
 USTRUCT()

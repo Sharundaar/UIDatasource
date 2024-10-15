@@ -17,105 +17,21 @@ void IUIDatasourceEventHandler::NativeOnDatasourceChanged(FUIDatasourceHandle Ha
 	Execute_BP_OnDatasourceChanged(Cast<UObject>(this), Handle);
 }
 
-void UUIDatasourceUserWidgetExtension::UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle)
-{
-	FUIDatasourcePool& DatasourcePool = UUIDatasourceSubsystem::Get()->Pool;
-	if(FUIDatasource* OldDatasource = OldHandle.Get())
-	{
-		for(auto& Bind: Bindings)
-		{
-			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(OldDatasource, Bind.Path))
-			{
-#if WITH_UIDATASOURCE_MONITOR
-				UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Bind.Bind);
-#else
-				Datasource->OnDatasourceChanged.Remove(Bind.Bind);
-#endif
-			}
-		}
-	}
-
-	if(FUIDatasource* NewDatasource = NewHandle.Get())
-	{
-		for(auto& Bind: Bindings)
-		{
-			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(NewDatasource, Bind.Path))
-			{
-#if WITH_UIDATASOURCE_MONITOR
-				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Bind.Bind);
-#else
-				Datasource->OnDatasourceChanged.Add(Bind.Bind);
-#endif
-				
-				// ReSharper disable once CppExpressionWithoutSideEffects
-				Bind.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
-			}
-		}
-	}
-}
-
 void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 {
 
-	if(Binding.BindType == EDatasourceBindType::Self)
-	{
-		Bindings.Add(Binding);
-		if(FUIDatasource* OwnDatasource = Handle.Get())
-		{
-			if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
-			{
-#if WITH_UIDATASOURCE_MONITOR
-				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
-#else
-				Datasource->OnDatasourceChanged.Add(Binding.Bind);
-#endif
-				
-				// ReSharper disable once CppExpressionWithoutSideEffects
-				Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
-			}
-		}
-	}
-
-	if(Binding.BindType == EDatasourceBindType::Global)
-	{
-		GlobalBindings.Add(Binding);
-	}
+	Linker.AddBinding(Binding);
 }
 
 void UUIDatasourceUserWidgetExtension::Construct()
 {
-	// Resolve any global bindings here
-	for (FUIDataBind& Binding : GlobalBindings)
-	{
-		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
-		{
-#if WITH_UIDATASOURCE_MONITOR
-			UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
-#else
-			Datasource->OnDatasourceChanged.Add(Binding.Bind);
-#endif
-
-			// ReSharper disable once CppExpressionWithoutSideEffects
-			Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
-		}
-	}
+	Linker.LinkGlobalBindings(true);
 }
 
 void UUIDatasourceUserWidgetExtension::Destruct()
 {
 	SetDatasource({});
-
-	for (FUIDataBind& Binding : GlobalBindings)
-	{
-		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
-		{
-#if WITH_UIDATASOURCE_MONITOR
-			UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Binding.Bind);
-#else
-			Datasource->OnDatasourceChanged.Remove(Binding.Bind);
-#endif
-		}	
-	}
+	Linker.LinkGlobalBindings(false);
 }
 
 void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget* UserWidget)
@@ -162,9 +78,104 @@ void UUIDatasourceWidgetBlueprintGeneratedClassExtension::PreConstruct(UUserWidg
 }
 #endif
 
+void FUIDatasourceLink::UpdateBindings(FUIDatasourceHandle OldHandle, FUIDatasourceHandle NewHandle)
+{
+	const FUIDatasourcePool& DatasourcePool = UUIDatasourceSubsystem::Get()->Pool;
+	if(const FUIDatasource* OldDatasource = OldHandle.Get())
+	{
+		for(auto& Bind: Bindings)
+		{
+			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(OldDatasource, Bind.Path))
+			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Bind.Bind);
+#else
+				Datasource->OnDatasourceChanged.Remove(Bind.Bind);
+#endif
+			}
+		}
+	}
+
+	if(const FUIDatasource* NewDatasource = NewHandle.Get())
+	{
+		for(const FUIDataBind& Bind : Bindings)
+		{
+			if(FUIDatasource* Datasource = DatasourcePool.FindDatasource(NewDatasource, Bind.Path))
+			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Bind.Bind);
+#else
+				Datasource->OnDatasourceChanged.Add(Bind.Bind);
+#endif
+				
+				// ReSharper disable once CppExpressionWithoutSideEffects
+				Bind.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
+			}
+		}
+	}
+}
+
+void FUIDatasourceLink::AddBinding(const FUIDataBind& Binding)
+{
+	if(Binding.BindType == EDatasourceBindType::Self)
+	{
+		Bindings.Add(Binding);
+		if(const FUIDatasource* OwnDatasource = Handle.Get())
+		{
+			if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindDatasource(OwnDatasource, Binding.Path))
+			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
+#else
+				Datasource->OnDatasourceChanged.Add(Binding.Bind);
+#endif
+				
+				// ReSharper disable once CppExpressionWithoutSideEffects
+				Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
+			}
+		}
+	}
+
+	if(Binding.BindType == EDatasourceBindType::Global)
+	{
+		GlobalBindings.Add(Binding);
+	}
+}
+
+void FUIDatasourceLink::LinkGlobalBindings(bool bLink)
+{
+	
+	// Resolve any global bindings here
+	for (FUIDataBind& Binding : GlobalBindings)
+	{
+		if(FUIDatasource* Datasource = UUIDatasourceSubsystem::Get()->Pool.FindOrCreateDatasource(nullptr, Binding.Path))
+		{
+			if(bLink)
+			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
+#else
+				Datasource->OnDatasourceChanged.Add(Binding.Bind);
+#endif
+
+				// ReSharper disable once CppExpressionWithoutSideEffects
+				Binding.Bind.ExecuteIfBound({ EUIDatasourceChangeEventKind::InitialBind, Datasource });
+			}
+			else
+			{
+#if WITH_UIDATASOURCE_MONITOR
+				UUIDatasourceSubsystem::Get()->Monitor.UnbindDatasourceEvent(Datasource, Binding.Bind);
+#else
+				Datasource->OnDatasourceChanged.Remove(Binding.Bind);
+#endif
+			}
+		}
+	}
+}
+
 void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandle)
 {
-	if(InHandle != Handle)
+	if(InHandle != Linker.Handle)
 	{
 		UUserWidget* UserWidget = GetUserWidget();
 		const bool bUserWidgetImplementsEventHandler = UserWidget->Implements<UUIDatasourceEventHandler>(); 
@@ -172,9 +183,9 @@ void UUIDatasourceUserWidgetExtension::SetDatasource(FUIDatasourceHandle InHandl
 		{
 			IUIDatasourceEventHandler::Execute_BP_OnDatasourceChanging(UserWidget, InHandle);
 		}
-		const FUIDatasourceHandle OldHandle = Handle;
-		Handle = InHandle;
-		UpdateBindings(OldHandle, Handle); // @NOTE: It's important that Handle has the right value, as binds might do something with it
+		const FUIDatasourceHandle OldHandle = Linker.Handle;
+		Linker.Handle = InHandle; // @NOTE: It's important that Handle has the right value, as binds might do something with it
+		Linker.UpdateBindings(OldHandle, Linker.Handle);
 		if(UserWidget && bUserWidgetImplementsEventHandler)
 		{
 			IUIDatasourceEventHandler::Execute_BP_OnDatasourceChanged(UserWidget, InHandle);

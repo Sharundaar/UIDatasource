@@ -27,7 +27,8 @@ public class UIDatasource : ModuleRules
 				"Slate",
 				"SlateCore",
 				"TraceLog",
-				"UMG",	
+				"UMG",
+				"InputCore",
 			}
 		);
 	}
