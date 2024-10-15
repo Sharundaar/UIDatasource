@@ -123,7 +123,13 @@ void UUIDatasourceListView::OnRefreshDesignerItems()
 	if(!Archetype)
 	{
 		ListItems.Reset();
-		RefreshDesignerItems<FUIDatasourceHandle>(ListItems, [this]() { return FUIDatasourceHandle(); });
+		int32 Num = 0;
+		RefreshDesignerItems<FUIDatasourceHandle>(ListItems, [this, &Num]()
+		{
+			FUIDatasourceHandle Handle;
+			Handle.Id = UIDatasource_PackId(++Num, EUIDatasourceId::Invalid);
+			return Handle;
+		});
 	}
 	else
 	{
@@ -137,6 +143,12 @@ void UUIDatasourceListView::OnRefreshDesignerItems()
 			Archetype->MockDatasource(ItemDatasource);
 			return ItemDatasource;
 		});
+		for(int32 Idx = ListItems.Num(); Idx < MinElementCount; ++Idx)
+		{
+			FUIDatasourceHandle Handle;
+			Handle.Id = UIDatasource_PackId(Idx, EUIDatasourceId::Invalid);
+			ListItems.Add(Handle);
+		}
 	}
 }
 

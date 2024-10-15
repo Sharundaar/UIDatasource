@@ -90,7 +90,8 @@ class UIDATASOURCE_API UUIDatasourceListView : public UListViewBase, public ITyp
 public:
 	UFUNCTION()
 	void OnDatasourceChanged(FUIDatasourceChangeEventArgs EventArgs);
-	
+
+	// Set the datasource linked to this list, expected to be an array datasource
 	UFUNCTION(BlueprintCallable)
 	void SetDatasource(FUIDatasourceHandle Datasource);
 
@@ -116,16 +117,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = ListView)
 	FScrollBarStyle ScrollBarStyle;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = ListEntries)
 	int32 MinElementCount = 0;
 	
 #if WITH_EDITORONLY_DATA
 	// Archetype this list view items uses
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = ListEntries)
 	UUIDatasourceArchetype* Archetype;
 
 	// Path used to generate preview datasources
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = ListEntries)
 	FString PreviewDatasourcePath = "ListPreview";
 #endif
 	
