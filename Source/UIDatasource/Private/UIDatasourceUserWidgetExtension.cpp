@@ -1,4 +1,4 @@
-// Copyright Sharundaar. All Rights Reserved.
+﻿// Copyright Sharundaar. All Rights Reserved.
 
 #include "UIDatasourceUserWidgetExtension.h"
 
@@ -19,7 +19,6 @@ void IUIDatasourceEventHandler::NativeOnDatasourceChanged(FUIDatasourceHandle Ha
 
 void UUIDatasourceUserWidgetExtension::AddBinding(const FUIDataBind& Binding)
 {
-
 	Linker.AddBinding(Binding);
 }
 
@@ -37,10 +36,10 @@ void UUIDatasourceUserWidgetExtension::Destruct()
 void UUIDatasourceWidgetBlueprintGeneratedClassExtension::Initialize(UUserWidget* UserWidget)
 {
 	UUIDatasourceUserWidgetExtension* DatasourceExtension = UUIDatasourceUserWidgetExtension::RegisterDatasourceExtension(UserWidget);
-	for(FUIDataBindTemplate& Binding : Bindings)
+	for (FUIDataBindTemplate& Binding : Bindings)
 	{
 		UFunction* Func = UserWidget->FindFunction(Binding.BindDelegateName);
-		if(ensure(Func))
+		if (ensureMsgf(Func, TEXT("Failed to find BindDelegateName function in this user widget, need to validate at blueprint compilation that the binding exists.")))
 		{
 			FOnDatasourceChangedDelegateBP Delegate;
 			Delegate.BindUFunction(UserWidget, Binding.BindDelegateName);
@@ -127,7 +126,7 @@ void FUIDatasourceLink::AddBinding(const FUIDataBind& Binding)
 #if WITH_UIDATASOURCE_MONITOR
 				UUIDatasourceSubsystem::Get()->Monitor.BindDatasourceEvent(Datasource, Binding.Bind);
 #else
-				Datasource->OnDatasourceChanged.Add(Binding.Bind);
+				Datasource->OnDatasourceChanged.AddUnique(Binding.Bind);
 #endif
 				
 				// ReSharper disable once CppExpressionWithoutSideEffects

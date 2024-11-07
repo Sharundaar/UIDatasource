@@ -3,6 +3,11 @@
 #include "UIDatasourceListView.h"
 #include "UIDatasourceTileView.generated.h"
 
+/**
+ * TileView implementation that interacts directly with Datasource Arrays
+ * Use SetDatasource to set the array datasource this list will be fed data from
+ * The list automatically sends the item datasources to the generated entry
+ */
 UCLASS()
 class UUIDatasourceTileView : public UUIDatasourceListView
 {

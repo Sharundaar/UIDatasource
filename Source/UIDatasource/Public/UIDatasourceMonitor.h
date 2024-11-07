@@ -17,6 +17,7 @@ struct FUIDatasourceMonitor
 	TMap<FUIDatasourceHandle, FOnDatasourceChangedDelegate> EventHandlers;
 
 	bool bProcessingEvents = false;
+	bool bCleanupDelegates = false;
 
 	void QueueDatasourceEvent(FUIDatasourceChangeEventArgs Event);
 	void BindDatasourceEvent(FUIDatasourceHandle Handle, const FOnDatasourceChangedDelegateBP& Delegate);

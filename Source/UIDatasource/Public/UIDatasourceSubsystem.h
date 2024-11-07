@@ -65,6 +65,47 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
+	static void Reset()
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		Instance->Pool.Clear();
+	}
+	
+	// Find a child datasource from Parent according to Path
+	// If Parent is empty, search from the root
+	// If Path is empty, returns parent (this makes it easier to fetch and bind to 'self' datasource)
+	template<class STRVIEW>
+	static FUIDatasource* FindOrCreateDatasource(FUIDatasource* Parent, const STRVIEW& Path)
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		return Instance->Pool.FindOrCreateDatasource(Parent, Path);
+	}
+	template<class STRVIEW>
+	static FUIDatasource* FindOrCreateDatasource(const STRVIEW& Path)
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		return Instance->Pool.FindOrCreateDatasource(nullptr, Path);
+	}
+	template<class STRVIEW>
+	static FUIDatasource* FindDatasource(const FUIDatasource* Parent, const STRVIEW& Path)
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		return Instance->Pool.FindDatasource(Parent, Path);
+	}
+	template<class STRVIEW>
+	static FUIDatasource* FindDatasource(const STRVIEW& Path)
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		return Instance->Pool.FindDatasource(nullptr, Path);
+	}
+	
+	static void DestroyDatasource(FUIDatasource* Datasource)
+	{
+		checkf(Instance, TEXT("DatasourceSubsystem not initialized, called too early."));
+		Instance->Pool.DestroyDatasource(Datasource);
+	}
+	
+	
 #if WITH_DATASOURCE_DEBUG_IMGUI
 	void DrawDebugUI();
 #endif
@@ -76,6 +117,8 @@ public:
 #if WITH_UIDATASOURCE_MONITOR
 	FUIDatasourceMonitor Monitor;
 	FDelegateHandle SlatePreTickHandle;
+#else
+	FSimpleMulticastDelegate OnLog;
 #endif
 
 protected:

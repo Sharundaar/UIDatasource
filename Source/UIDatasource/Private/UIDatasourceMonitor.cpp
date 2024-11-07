@@ -44,7 +44,7 @@ void FUIDatasourceMonitor::UnbindDatasourceEvent(FUIDatasourceHandle Handle, con
 		Delegates->Remove(Delegate);
 		if (!Delegates->IsBound())
 		{
-			EventHandlers.Remove(Handle);
+			bCleanupDelegates = true;
 		}
 	}
 }
@@ -52,7 +52,6 @@ void FUIDatasourceMonitor::UnbindDatasourceEvent(FUIDatasourceHandle Handle, con
 void FUIDatasourceMonitor::ProcessEvents()
 {
 	UIDATASOURCE_FUNC_TRACE()
-
 	bProcessingEvents = true;
 	QueuedEventsBuffer = QueuedEvents;
 	QueuedEvents.Reset();
@@ -60,8 +59,25 @@ void FUIDatasourceMonitor::ProcessEvents()
 	{
 		if(const FOnDatasourceChangedDelegate* Delegates = EventHandlers.Find(Event.Handle))
 		{
-			Delegates->Broadcast(Event);
+			// @TODO: Evaluate performance impact of this copy here, broadcasting this event might
+			// trigger some widgets to bind to some new datasources, this would potentially change EventHandlers size
+			// which means reallocating the underlying delegates, which we hold a pointer to in this scope
+			// making a local copy before broadcasting ensures we keep it valid.
+			FOnDatasourceChangedDelegate TmpDelegates = *Delegates;
+			TmpDelegates.Broadcast(Event);
 		}
+	}
+
+	if (bCleanupDelegates)
+	{
+		for(auto It = EventHandlers.CreateIterator(); It; ++It)
+		{
+			if(!It->Value.IsBound())
+			{
+				It.RemoveCurrent();
+			}
+		}
+		bCleanupDelegates = false;
 	}
 	bProcessingEvents = false;
 }

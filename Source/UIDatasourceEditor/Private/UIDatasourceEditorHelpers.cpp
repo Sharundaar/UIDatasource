@@ -1,6 +1,7 @@
 #include "UIDatasourceEditorHelpers.h"
 
 #include "EdGraphSchema_K2.h"
+#include "K2Node.h"
 #include "UIDatasourceArchetype.h"
 #include "UIDatasourceBlueprintLibrary.h"
 #include "Engine/Texture2D.h"
@@ -157,4 +158,49 @@ FMemberReference UIDatasourceEditorHelpers::GetSetterFunctionForDescriptor(const
 	FMemberReference MemberReference;
 	MemberReference.SetExternalMember(SetDatasourceValueFunctionName, UUIDatasourceBlueprintLibrary::StaticClass());
 	return MemberReference;
+}
+
+TArray<UIDatasourceEditorHelpers::FPinData> UIDatasourceEditorHelpers::CollectCreatedPins(const UK2Node* Node, const FUIDatasourceDescriptor& Descriptor)
+{
+	if(Descriptor.Type == EUIDatasourceValueType::Archetype && Descriptor.Archetype && Descriptor.ImportMethod != EUIDatasourceArchetypeImportMethod::AsArray)
+	{
+		TArray<FPinData> PinData;
+
+		for(const FUIDatasourceDescriptor& Elem : Descriptor.Archetype->GetDescriptors())
+		{
+			if(Elem.IsInlineArchetype())
+			{
+				for (const FUIDatasourceDescriptor& RecChild : Elem.Archetype->GetDescriptors())
+				{
+					if(UEdGraphPin* PinFound = Node->FindPin(RecChild.Path))
+					{
+						PinData.Add({
+							PinFound,
+							RecChild,
+						});
+					}
+				}
+			}
+			else
+			{
+				if(UEdGraphPin* PinFound = Node->FindPin(Elem.Path))
+				{
+					PinData.Add({
+						PinFound,
+						Elem,
+					});
+				}
+			}
+		}
+		
+		return PinData;
+	}
+
+	UEdGraphPin* Pin = Node->FindPin(Descriptor.Path.IsEmpty() ? TEXT("Value") : Descriptor.Path);
+	if (Pin)
+	{
+		return { { Pin, Descriptor } };
+	}
+
+	return {};
 }

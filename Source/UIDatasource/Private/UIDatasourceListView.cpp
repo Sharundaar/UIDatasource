@@ -42,6 +42,12 @@ UUIDatasourceListView::UUIDatasourceListView(const FObjectInitializer& ObjectIni
 
 void UUIDatasourceListView::OnDatasourceChanged(FUIDatasourceChangeEventArgs EventArgs)
 {
+	// Goals here is to pull out all array items out of the array datasource and push them to the ListItems array, which our underlying SListItem consumes.
+	// To do so we just parse the array datasource children manually for efficiency, this avoids a potential N^2 lookup if we went by name, this uses the assumption
+	// that datasource elements array named numbers represents their index in the array.
+	// We also want to fill up the ListItems array with invalid datasource that hashes out to different pair buckets, this is why you'll see different generations setup
+	// just know that the generation isn't meant to mean anything, we only really care that the datasource registers as "Invalid", and the they are different from each other
+	// for the purpose of the SListView hashing mechanism.
 	ListItems.Reset();
 	FUIDatasource* Datasource = EventArgs.Handle.Get();
 	if (FUIArrayDatasource* ArrayDatasource = FUIArrayDatasource::Cast(Datasource))
@@ -118,8 +124,13 @@ void UUIDatasourceListView::ReleaseSlateResources(bool bReleaseChildren)
 	MyListView.Reset();
 }
 
+#if WITH_EDITOR
 void UUIDatasourceListView::OnRefreshDesignerItems()
 {
+	// This is purely for the designer preview, the generational index shift is based on the same principle
+	// outlined in OnDatasourceChanged, we just want different "Invalid" datasource to hash to different buckets
+	// If we define an Archetype, we can use that to generate editor time datasources and link them to the preview.
+	// We also use MinElementCount to supplement the preview element count to be more accurate with runtime use.
 	if(!Archetype)
 	{
 		ListItems.Reset();
@@ -151,6 +162,7 @@ void UUIDatasourceListView::OnRefreshDesignerItems()
 		}
 	}
 }
+#endif
 
 UUserWidget& UUIDatasourceListView::OnGenerateEntryWidgetInternal(FUIDatasourceHandle Item,
                                                                   TSubclassOf<UUserWidget> DesiredEntryClass, const TSharedRef<STableViewBase>& OwnerTable)

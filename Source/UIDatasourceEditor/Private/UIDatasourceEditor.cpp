@@ -28,6 +28,7 @@
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SNumericEntryBox.h"
+#include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Views/STreeView.h"
 
@@ -953,6 +954,8 @@ void SUIDatasourceDebugger::Construct(const FArguments& InArgs)
 
 #if WITH_UIDATASOURCE_MONITOR
 	MonitorEventHandle = UUIDatasourceSubsystem::Get()->Monitor.OnMonitorEvent.AddLambda([this]() { DebuggerTree->RequestTreeRefresh(); });
+#else
+	MonitorEventHandle = UUIDatasourceSubsystem::Get()->OnLog.AddLambda([this]() { DebuggerTree->RequestTreeRefresh(); });
 #endif
 }
 
@@ -960,6 +963,8 @@ SUIDatasourceDebugger::~SUIDatasourceDebugger()
 {
 #if WITH_UIDATASOURCE_MONITOR
 	UUIDatasourceSubsystem::Get()->Monitor.OnMonitorEvent.Remove(MonitorEventHandle);
+#else
+	UUIDatasourceSubsystem::Get()->OnLog.Remove(MonitorEventHandle);
 #endif
 	MonitorEventHandle.Reset();
 }

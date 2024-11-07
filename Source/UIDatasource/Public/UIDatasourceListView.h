@@ -77,7 +77,9 @@ struct TIsValidListItem<FUIDatasourceHandle>
 };
 
 /**
- * 
+ * ListView implementation that interacts directly with Datasource Arrays
+ * Use SetDatasource to set the array datasource this list will be fed data from
+ * The list automatically sends the item datasources to the generated entry
  */
 UCLASS()
 class UIDATASOURCE_API UUIDatasourceListView : public UListViewBase, public ITypedUMGListView<FUIDatasourceHandle>
@@ -88,6 +90,7 @@ public:
 	UUIDatasourceListView(const FObjectInitializer& ObjectInitializer);
 	IMPLEMENT_TYPED_UMG_LIST(FUIDatasourceHandle, MyListView)
 
+	// Callback to update the listview content
 	UFUNCTION()
 	void OnDatasourceChanged(FUIDatasourceChangeEventArgs EventArgs);
 
@@ -111,12 +114,15 @@ protected:
 	TSharedPtr<SListView<FUIDatasourceHandle>> MyListView;
 	TArray<FUIDatasourceHandle> ListItems;
 
+	// Style for the listview
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = ListView, meta = (DisplayName = "Style"))
 	FTableViewStyle WidgetStyle;
 
+	// Scrollbar Style
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = ListView)
 	FScrollBarStyle ScrollBarStyle;
 
+	// Minimum number of elements the list should show
 	UPROPERTY(EditAnywhere, Category = ListEntries)
 	int32 MinElementCount = 0;
 	

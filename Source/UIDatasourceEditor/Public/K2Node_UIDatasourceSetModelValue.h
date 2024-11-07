@@ -4,6 +4,7 @@
 
 #include "K2Node.h"
 #include "UIDatasourceArchetype.h"
+#include "UIDatasourceEditorHelpers.h"
 
 #include "K2Node_UIDatasourceSetModelValue.generated.h"
 
@@ -42,13 +43,5 @@ protected:
 	FUIDatasourceDescriptor Descriptor;
 
 	// Sruct to help us link a created pin with a descriptor
-	struct FPinData
-	{
-		UEdGraphPin* Pin;
-		FUIDatasourceDescriptor Descriptor;
-	};
-	TArray<FPinData> CreatedPin;
-
-	// Collect all created pins for patchup and compilation
-	TArray<FPinData> CollectCreatedPins() const;
+	TArray<UIDatasourceEditorHelpers::FPinData> CreatedPin;
 };

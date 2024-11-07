@@ -38,10 +38,10 @@ void UK2Node_UIDatasourceSetModelValue::ExpandNode(FKismetCompilerContext& Compi
 
 	UEdGraphPin* CurrentExecPin = OwnExecPin;
 	
-	CreatedPin = CollectCreatedPins();
+	CreatedPin = UIDatasourceEditorHelpers::CollectCreatedPins(this, Descriptor);
 	for (int i = 0; i < CreatedPin.Num(); ++i)
 	{
-		const FPinData& PinData = CreatedPin[i];
+		const UIDatasourceEditorHelpers::FPinData& PinData = CreatedPin[i];
 		UEdGraphPin* Pin = PinData.Pin;
 		const FUIDatasourceDescriptor& PinDescriptor = PinData.Descriptor;
 
@@ -281,42 +281,4 @@ void UK2Node_UIDatasourceSetModelValue::PostEditChangeProperty(FPropertyChangedE
 	{
 		ReconstructNode();
 	}
-}
-
-TArray<UK2Node_UIDatasourceSetModelValue::FPinData> UK2Node_UIDatasourceSetModelValue::CollectCreatedPins() const
-{
-	if(Descriptor.Type == EUIDatasourceValueType::Archetype && Descriptor.Archetype)
-	{
-		TArray<FPinData> PinData;
-
-		for(const FUIDatasourceDescriptor& Elem : Descriptor.Archetype->GetDescriptors())
-		{
-			if(Elem.IsInlineArchetype())
-			{
-				for (const FUIDatasourceDescriptor& RecChild : Elem.Archetype->GetDescriptors())
-				{
-					PinData.Add({
-						FindPinChecked(RecChild.Path),
-						RecChild,
-					});
-				}
-			}
-			else
-			{
-				PinData.Add({
-					FindPinChecked(Elem.Path),
-					Elem,
-				});
-			}
-		}
-		
-		return PinData;
-	}
-	
-	if(Descriptor.Path.IsEmpty())
-	{
-		return { { FindPinChecked(TEXT("Value")), Descriptor } };
-	}
-
-	return { { FindPinChecked(Descriptor.Path), Descriptor } };
 }

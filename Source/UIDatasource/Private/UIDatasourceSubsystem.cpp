@@ -2,7 +2,8 @@
 
 #include "UIDatasourceSubsystem.h"
 
-#include "..\Public\UIDatasourceMonitor.h"
+#include "Framework/Application/SlateApplication.h"
+#include "UIDatasourceMonitor.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UIDatasourceSubsystem)
 
@@ -344,6 +345,8 @@ void UUIDatasourceSubsystem::LogDatasourceChange(FUIDatasourceLogEntry Change)
 	Get()->Monitor.Logs.Add(Change);
 	// ReSharper disable once CppExpressionWithoutSideEffects
 	Get()->Monitor.OnMonitorEvent.Broadcast();
+#else
+	Get()->OnLog.Broadcast();
 #endif
 }
 
@@ -352,6 +355,11 @@ void UUIDatasourceSubsystem::Deinitialize()
 	Pool.Clear();
 #if WITH_UIDATASOURCE_MONITOR
 	Monitor.Clear();
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().OnPreTick().Remove(SlatePreTickHandle);
+		SlatePreTickHandle.Reset();
+	}
 #endif
 }
 
@@ -365,10 +373,13 @@ void UUIDatasourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 #if WITH_UIDATASOURCE_MONITOR
 		// PreTick should happen right before the widget hierarchy is drawn, and right after the game itself Tick (in most situations)
 		// so it should be appropriate to process all datasource events right now
-		SlatePreTickHandle = FSlateApplication::Get().OnPreTick().AddWeakLambda(this, [this](float /*Delta*/)
+		if (FSlateApplication::IsInitialized())
 		{
-			Monitor.ProcessEvents();
-		});
+			SlatePreTickHandle = FSlateApplication::Get().OnPreTick().AddWeakLambda(this, [this](float /*Delta*/)
+			{
+				Monitor.ProcessEvents();
+			});
+		}
 #endif
 	}
 }
